@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Doc Space — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Document & minutes library</h1>
+<p class="text-sm text-gray-500 mb-5">Minutes, policies, speeches — with ready-made templates</p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card lg:col-span-2 overflow-x-auto">
+    <table class="tbl">
+      <thead><tr><th>Title</th><th>Category</th><th>Created by</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        {% for d in docs %}
+        <tr><td class="font-medium">{{ d.title }}</td>
+          <td><span class="badge {{ 'b-info' if d.category=='Minutes' else 'b-info' if d.category=='Policy' else 'b-gray' }}">{{ d.category }}</span></td>
+          <td>{{ d.created_by }}</td><td class="text-xs">{{ d.at.strftime('%d %b %Y') }}</td>
+          <td><a class="text-brand font-semibold" href="{{ url_for('docs.view', did=d.id) }}">Open →</a></td></tr>
+        {% else %}<tr><td colspan="5" class="text-gray-400">No documents yet — create one from a template.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">New document</h2>
+    <form method="post" action="{{ url_for('docs.new_doc') }}" class="space-y-2">
+      <input class="input" name="title" placeholder="Document title" required>
+      <select class="input" name="category">
+        <option>Minutes</option><option>Policy</option><option>Speech</option><option>Template</option>
+      </select>
+      <label class="lbl">Minute template (optional)</label>
+      <select class="input" name="template">
+        <option value="">— Blank —</option>
+        {% for t in templates %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-brand w-full">Create</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

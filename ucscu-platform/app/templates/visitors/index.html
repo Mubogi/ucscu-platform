@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Visitors — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Visitor management</h1>
+<p class="text-sm text-gray-500 mb-5">Reception register, gate tags, check-in/check-out</p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card lg:col-span-2 overflow-x-auto">
+    <h2 class="font-bold mb-3">🟢 On premises now ({{ on_site|length }})</h2>
+    <table class="tbl">
+      <thead><tr><th>Visitor</th><th>Tag</th><th>Host</th><th>Purpose</th><th>Arrived</th><th></th></tr></thead>
+      <tbody>
+        {% for v in on_site %}
+        <tr>
+          <td class="font-medium">{{ v.name }}<div class="text-xs text-gray-400">{{ v.organization or 'Individual' }}</div></td>
+          <td><span class="badge b-ok font-mono">{{ v.tag_no }}</span></td>
+          <td>{{ v.host.full_name if v.host else '—' }}</td>
+          <td class="text-xs">{{ v.purpose or '—' }}{% if v.items %}<div class="text-gray-400">Items: {{ v.items }}</div>{% endif %}</td>
+          <td class="text-xs whitespace-nowrap">{{ v.arrived_at.strftime('%H:%M') }}</td>
+          <td>
+            <a class="btn btn-ghost text-xs px-2 py-1" href="{{ url_for('visitors.tag', vid=v.id) }}">Tag</a>
+            <form class="inline" method="post" action="{{ url_for('visitors.checkout', vid=v.id) }}">
+              <button class="btn btn-brand text-xs px-2 py-1">Check out</button></form>
+          </td>
+        </tr>
+        {% else %}<tr><td colspan="6" class="text-gray-400">No visitors on site.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+
+    <h2 class="font-bold mt-6 mb-3 text-sm text-gray-500">Recently departed</h2>
+    <table class="tbl">
+      <thead><tr><th>Visitor</th><th>Tag</th><th>Host</th><th>Duration</th><th>Left</th></tr></thead>
+      <tbody>
+        {% for v in departed %}
+        <tr><td>{{ v.name }}</td><td class="font-mono text-xs">{{ v.tag_no }}</td>
+          <td>{{ v.host.full_name if v.host else '—' }}</td>
+          <td class="text-xs">{{ ((v.departed_at - v.arrived_at).seconds // 60) }} min</td>
+          <td class="text-xs">{{ v.departed_at.strftime('%H:%M') }}</td></tr>
+        {% else %}<tr><td colspan="5" class="text-gray-400">—</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Register visitor</h2>
+    <form method="post" action="{{ url_for('visitors.register') }}" class="space-y-2">
+      <input class="input" name="name" placeholder="Visitor full name" required>
+      <input class="input" name="organization" placeholder="Organization / SACCO">
+      <input class="input" name="phone" placeholder="Phone">
+      <label class="lbl">Tag no. (next free: {{ next_tag }})</label>
+      <input class="input" name="tag_no" placeholder="{{ next_tag }}">
+      <label class="lbl">Host (staff member)</label>
+      <select class="input" name="host_user_id">
+        <option value="">— Reception —</option>
+        {% for u in users %}<option value="{{ u.id }}">{{ u.full_name }}</option>{% endfor %}
+      </select>
+      <input class="input" name="purpose" placeholder="Purpose of visit">
+      <input class="input" name="items" placeholder="Items brought in (optional)">
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="expected"> Expected appointment</label>
+      <button class="btn btn-brand w-full">Check in visitor</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

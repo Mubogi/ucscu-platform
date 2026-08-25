@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Attendance — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Attendance & leave</h1>
+<p class="text-sm text-gray-500 mb-5">LAN-gated check-in, leave & permission workflow, meeting registers</p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card">
+    <h2 class="font-bold mb-3">Check in / out (LAN only)</h2>
+    <div class="space-y-3">
+      <form method="post" action="{{ url_for('attendance.checkin', kind='check_in') }}">
+        <label class="lbl">Lateness reason (optional)</label>
+        <input class="input mb-2" name="lateness_reason" placeholder="e.g. traffic, prior engagement">
+        <button class="btn btn-brand w-full">✅ Check in (LAN only)</button>
+      </form>
+      <form method="post" action="{{ url_for('attendance.checkin', kind='check_out') }}">
+        <button class="btn btn-ghost w-full">🕓 Check out (LAN only)</button>
+      </form>
+      <form method="post" action="{{ url_for('attendance.exemption') }}" class="border-t pt-3">
+        <label class="lbl">Field / off-site exemption reason</label>
+        <input class="input mb-2" name="lateness_reason" placeholder="e.g. field visit in Mbale">
+        <button class="btn btn-gold w-full">📍 Field check-in (exempt)</button>
+      </form>
+      <p class="text-xs text-gray-400">Check-in/out only works when your device is on the office network.
+      Field staff and board members use the exemption channel — all events are audit-logged.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="font-bold mb-3">My recent events</h2>
+    <ul class="text-sm space-y-2">
+      {% for e in my_events %}
+      <li class="flex justify-between gap-2">
+        <span class="badge {{ 'b-ok' if e.kind=='check_in' else 'b-gray' }}">{{ e.kind.replace('_',' ') }}</span>
+        <span class="badge {{ 'b-info' if e.mode=='lan' else 'b-warn' }}">{{ e.mode }}</span>
+        <span class="text-gray-500">{{ e.at.strftime('%d %b %H:%M') }}</span>
+        {% if e.lateness_reason %}<span class="text-xs text-gray-400">({{ e.lateness_reason }})</span>{% endif %}
+      </li>
+      {% else %}<li class="text-gray-400">No events yet.</li>{% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 class="font-bold mb-3">Request leave / absence / late arrival</h2>
+    <form method="post" action="{{ url_for('attendance.leave_request') }}" class="space-y-2">
+      <select class="input" name="kind">
+        <option value="Leave">Leave</option><option value="Absence">Absence</option>
+        <option value="Late arrival">Late arrival notification</option>
+      </select>
+      <div class="flex gap-2">
+        <input class="input" name="starts_on" type="date" required>
+        <input class="input" name="ends_on" type="date" required>
+      </div>
+      <textarea class="input" name="reason" rows="2" placeholder="Reason (e.g. medical, funeral, official duty)" required></textarea>
+      <button class="btn btn-brand w-full">Submit request</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-4 mt-4">
+  <div class="card overflow-x-auto">
+    <h2 class="font-bold mb-3">Leave & permission queue</h2>
+    <table class="tbl">
+      <thead><tr><th>Who</th><th>Kind</th><th>Dates</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for r in leave %}
+        <tr><td class="font-medium">{{ r.user.full_name }}</td><td>{{ r.kind }}</td>
+          <td class="whitespace-nowrap text-xs">{{ r.starts_on }} → {{ r.ends_on }}</td>
+          <td class="text-xs">{{ r.reason }}</td>
+          <td><span class="badge {{ 'b-ok' if r.status=='Approved' else 'b-danger' if r.status=='Declined' else 'b-warn' }}">{{ r.status }}</span></td>
+          <td class="whitespace-nowrap">
+            {% if me.role in ('admin','staff','board') and r.status=='Pending' %}
+            <form class="inline" method="post" action="{{ url_for('attendance.decide', lid=r.id, status='Approved') }}"><button class="btn btn-brand text-xs px-2 py-1">Approve</button></form>
+            <form class="inline" method="post" action="{{ url_for('attendance.decide', lid=r.id, status='Declined') }}"><button class="btn btn-ghost text-xs px-2 py-1">Decline</button></form>
+            {% endif %}
+          </td></tr>
+        {% else %}<tr><td colspan="6" class="text-gray-400">No requests.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if me.role in ('admin','staff','board') %}
+  <div class="card overflow-x-auto">
+    <h2 class="font-bold mb-3">All staff attendance events (latest 100)</h2>
+    <table class="tbl">
+      <thead><tr><th>Who</th><th>Event</th><th>Mode</th><th>When</th><th>IP</th><th>Lateness note</th></tr></thead>
+      <tbody>
+        {% for e in all_events %}
+        <tr><td class="font-medium">{{ e.user.full_name }}</td>
+          <td><span class="badge {{ 'b-ok' if e.kind=='check_in' else 'b-gray' }}">{{ e.kind.replace('_',' ') }}</span></td>
+          <td><span class="badge {{ 'b-info' if e.mode=='lan' else 'b-warn' }}">{{ e.mode }}</span></td>
+          <td class="whitespace-nowrap text-xs">{{ e.at.strftime('%d %b %H:%M') }}</td>
+          <td class="font-mono text-xs">{{ e.ip }}</td>
+          <td class="text-xs">{{ e.lateness_reason or '' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card mt-4">
+  <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+    <h2 class="font-bold">Meeting attendance registers</h2>
+    {% if me.role in ('admin','staff','board') %}
+    <form method="post" action="{{ url_for('attendance.new_meeting') }}" class="flex gap-2 items-end flex-wrap">
+      <input class="input w-52" name="title" placeholder="Meeting title" required>
+      <input class="input w-32" name="on_date" type="date" required>
+      <input class="input w-40" name="venue" placeholder="Venue">
+      <button class="btn btn-brand">New register</button>
+    </form>
+    {% endif %}
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Meeting</th><th>Date</th><th>Venue</th><th>Present</th><th></th></tr></thead>
+    <tbody>
+      {% for m in meetings %}
+      <tr><td class="font-medium">{{ m.title }}</td><td>{{ m.on_date }}</td><td>{{ m.venue or '—' }}</td>
+        <td><span class="badge b-info">{{ (m.records|selectattr('present')|list|length) }}/{{ m.records|length }}</span></td>
+        <td><a class="text-brand font-semibold" href="{{ url_for('attendance.meeting', mid=m.id) }}">Open register →</a></td></tr>
+      {% else %}<tr><td colspan="5" class="text-gray-400">No registers created.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

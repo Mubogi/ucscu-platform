@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Central Finance Facility — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Central Finance Facility (CFF)</h1>
+<p class="text-sm text-gray-500 mb-5">Pooled liquidity, inter-lending and investment for member SACCOs</p>
+
+{% if state.liquid < threshold %}
+<div class="mb-4 px-4 py-3 rounded-lg bg-red-100 text-red-800 text-sm font-semibold">
+  ⚠️ Liquidity alert: liquid balance {{ state.liquid|ugx }} is below the {{ threshold|ugx }} prudential threshold.
+</div>
+{% endif %}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">TOTAL DEPOSITS</div><div class="text-xl font-bold text-brand">{{ state.deposits|ugx }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">LOANS OUTSTANDING</div><div class="text-xl font-bold">{{ state.loans_out|ugx }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">INVESTED</div><div class="text-xl font-bold">{{ state.invested|ugx }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">LIQUID BALANCE</div>
+    <div class="text-xl font-bold {{ 'text-red-600' if state.liquid < threshold else 'text-brand' }}">{{ state.liquid|ugx }}</div></div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card lg:col-span-2 overflow-x-auto">
+    <h2 class="font-bold mb-3">Inter-lending pipeline</h2>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>SACCO</th><th>Amount</th><th>Purpose</th><th>Total due</th><th>Outstanding</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for l in loans %}
+        <tr>
+          <td>{{ l.id }}</td>
+          <td class="font-medium whitespace-nowrap">{{ l.sacco.name }}</td>
+          <td class="whitespace-nowrap">{{ l.amount|ugx }}</td>
+          <td class="text-xs">{{ l.purpose }}</td>
+          <td class="whitespace-nowrap">{{ l.total_due|ugx }}</td>
+          <td class="whitespace-nowrap">{{ l.outstanding|ugx }}</td>
+          <td><span class="badge {{ 'b-ok' if l.status in ('Repaid','Disbursed') else 'b-danger' if l.status=='Rejected' else 'b-warn' if l.status in ('Applied','Under review') else 'b-info' }}">{{ l.status }}</span></td>
+          <td class="whitespace-nowrap">
+            {% if me.role in ('staff','admin') and l.status == 'Applied' %}
+              <form class="inline" method="post" action="{{ url_for('cff.loan_action', lid=l.id, action='review') }}"><button class="btn btn-ghost text-xs px-2 py-1">Review</button></form>
+            {% endif %}
+            {% if me.role in ('board','admin') and l.status == 'Under review' %}
+              <form class="inline" method="post" action="{{ url_for('cff.loan_action', lid=l.id, action='approve') }}"><button class="btn btn-brand text-xs px-2 py-1">Approve</button></form>
+              <form class="inline" method="post" action="{{ url_for('cff.loan_action', lid=l.id, action='reject') }}"><button class="btn btn-ghost text-xs px-2 py-1">Reject</button></form>
+            {% endif %}
+            {% if me.role in ('staff','admin') and l.status == 'Approved' %}
+              <form class="inline" method="post" action="{{ url_for('cff.loan_action', lid=l.id, action='disburse') }}"><button class="btn btn-gold text-xs px-2 py-1">Disburse</button></form>
+            {% endif %}
+            {% if me.role in ('staff','admin','sacco') and l.status == 'Disbursed' %}
+              <form class="inline" method="post" action="{{ url_for('cff.repay', lid=l.id) }}">
+                <input class="input w-24 inline text-xs" name="amount" type="number" placeholder="UGX" required>
+                <button class="btn btn-brand text-xs px-2 py-1">Repay</button></form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="space-y-4">
+    {% if me.role in ('staff','admin','sacco') %}
+    <div class="card">
+      <h2 class="font-bold mb-3">Record pool deposit</h2>
+      <form method="post" action="{{ url_for('cff.deposit') }}" class="space-y-2">
+        <select class="input" name="sacco_id">
+          {% if me.role == 'sacco' %}<option value="{{ me.sacco_id }}">{{ me.sacco.name }}</option>
+          {% else %}{% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}{% endif %}
+        </select>
+        <input class="input" name="amount" type="number" placeholder="Amount (UGX)" required>
+        <input class="input" name="reference" placeholder="MoMo / bank reference">
+        <button class="btn btn-brand w-full">Record deposit</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2 class="font-bold mb-3">Apply for inter-lending</h2>
+      <form method="post" action="{{ url_for('cff.apply') }}" class="space-y-2">
+        <select class="input" name="sacco_id">
+          {% if me.role == 'sacco' %}<option value="{{ me.sacco_id }}">{{ me.sacco.name }}</option>
+          {% else %}{% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}{% endif %}
+        </select>
+        <input class="input" name="amount" type="number" placeholder="Amount (UGX)" required>
+        <input class="input" name="purpose" placeholder="Purpose">
+        <div class="flex gap-2">
+          <input class="input" name="interest_rate" type="number" step="0.1" value="10" title="Flat rate % p.a.">
+          <input class="input" name="term_months" type="number" value="12" title="Term (months)">
+        </div>
+        <button class="btn btn-gold w-full">Submit application</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-4 mt-4">
+  <div class="card overflow-x-auto">
+    <h2 class="font-bold mb-3">Recent deposits</h2>
+    <table class="tbl">
+      <thead><tr><th>SACCO</th><th>Amount</th><th>Date</th><th>Reference</th></tr></thead>
+      <tbody>{% for d in deposits %}<tr><td>{{ d.sacco.name }}</td><td>{{ d.amount|ugx }}</td><td>{{ d.deposited_on }}</td><td class="font-mono text-xs">{{ d.reference }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="card overflow-x-auto">
+    <div class="flex justify-between items-center mb-3"><h2 class="font-bold">Investments</h2></div>
+    <table class="tbl">
+      <thead><tr><th>Instrument</th><th>Principal</th><th>Rate</th><th>Matures</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for i in investments %}
+        <tr><td>{{ i.instrument }}<div class="text-xs text-gray-400">{{ i.institution }}</div></td>
+          <td>{{ i.principal|ugx }}</td><td>{{ i.rate }}%</td><td>{{ i.matures_on or '—' }}</td>
+          <td><span class="badge {{ 'b-info' if i.status=='Active' else 'b-gray' }}">{{ i.status }}</span></td>
+          <td>{% if me.role in ('staff','admin') and i.status=='Active' %}
+            <form method="post" action="{{ url_for('cff.mature', iid=i.id) }}"><button class="btn btn-ghost text-xs px-2 py-1">Mature</button></form>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if me.role in ('staff','admin') %}
+    <form method="post" action="{{ url_for('cff.invest') }}" class="mt-3 grid grid-cols-2 gap-2">
+      <input class="input" name="instrument" placeholder="Instrument (e.g. 91-day T-Bill)" required>
+      <input class="input" name="institution" placeholder="Institution">
+      <input class="input" name="principal" type="number" placeholder="Principal (UGX)" required>
+      <input class="input" name="rate" type="number" step="0.1" placeholder="Rate %">
+      <input class="input" name="matures_on" type="date">
+      <button class="btn btn-brand">Record investment</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

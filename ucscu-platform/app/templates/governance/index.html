@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Governance — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">Governance — meetings & resolutions</h1>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    {% for m in meetings %}
+    <div class="card">
+      <div class="flex justify-between items-start flex-wrap gap-2">
+        <div>
+          <a class="font-bold text-brand" href="{{ url_for('governance.meeting', mid=m.id) }}">{{ m.title }}</a>
+          <span class="badge b-gray ml-1">{{ m.body_type }}</span>
+          <p class="text-xs text-gray-400 mt-1">{{ m.meets_on }} · {{ m.venue }}</p>
+        </div>
+        <span class="badge {{ 'b-info' if m.meets_on >= now_date else 'b-gray' }}">{{ 'Upcoming' if m.meets_on >= now_date else 'Held' }}</span>
+      </div>
+      {% if m.resolutions %}
+      <ul class="mt-3 text-sm space-y-1">
+        {% for r in m.resolutions %}
+        <li class="flex justify-between gap-2"><span>{{ r.text }}</span>
+          <span class="badge {{ 'b-ok' if r.status=='Adopted' else 'b-danger' if r.status=='Rejected' else 'b-warn' }}">{{ r.status }}</span></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% else %}<div class="card text-gray-400 text-sm">No meetings scheduled.</div>{% endfor %}
+  </div>
+  {% if me.role in ('staff','admin') %}
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Schedule meeting</h2>
+    <form method="post" action="{{ url_for('governance.new_meeting') }}" class="space-y-2">
+      <input class="input" name="title" placeholder="Meeting title" required>
+      <select class="input" name="body_type"><option>Board</option><option>Supervisory</option><option>AGM</option><option>Committee</option></select>
+      <input class="input" name="meets_on" type="date" required>
+      <input class="input" name="venue" placeholder="Venue">
+      <textarea class="input" name="agenda" rows="4" placeholder="Agenda (one item per line)"></textarea>
+      <button class="btn btn-brand w-full">Schedule</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

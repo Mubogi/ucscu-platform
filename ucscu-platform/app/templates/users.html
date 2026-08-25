@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Users — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">User management</h1>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card lg:col-span-2">
+    <table class="tbl">
+      <thead><tr><th>Username</th><th>Full name</th><th>Role</th><th>SACCO</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr><td class="font-mono">{{ u.username }}</td><td>{{ u.full_name }}</td>
+          <td><span class="badge b-info capitalize">{{ u.role }}</span></td>
+          <td>{{ u.sacco.name if u.sacco else '—' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2 class="font-bold mb-3">Create user</h2>
+    <form method="post" class="space-y-3">
+      <div><label class="lbl">Username</label><input class="input" name="username" required></div>
+      <div><label class="lbl">Full name</label><input class="input" name="full_name" required></div>
+      <div><label class="lbl">Role</label>
+        <select class="input" name="role">{% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}</select></div>
+      <div><label class="lbl">SACCO (only for role = sacco)</label>
+        <select class="input" name="sacco_id"><option value="">—</option>
+          {% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div>
+      <div><label class="lbl">Password</label><input class="input" name="password" type="password" required></div>
+      <button class="btn btn-brand w-full">Create user</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

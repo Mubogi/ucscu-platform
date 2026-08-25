@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Submit Report — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">Submit quarterly financial report</h1>
+<div class="card max-w-2xl">
+  <form method="post" class="grid md:grid-cols-2 gap-4">
+    <div><label class="lbl">SACCO</label>
+      <select class="input" name="sacco_id">
+        {% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+      </select></div>
+    <div><label class="lbl">Period (e.g. 2026-Q3)</label><input class="input" name="period" required placeholder="2026-Q3"></div>
+    {% for f, label in [('savings','Member savings (UGX)'), ('loans_outstanding','Loans outstanding (UGX)'),
+        ('delinquent_loans','Delinquent loans >30 days (UGX)'), ('total_assets','Total assets (UGX)'),
+        ('reserves','Reserves (UGX)'), ('allowance','Allowance for loan losses (UGX)'),
+        ('cash','Cash & equivalents (UGX)'), ('net_income','Net income this quarter (UGX)'),
+        ('members','Individual members')] %}
+    <div><label class="lbl">{{ label }}</label><input class="input" name="{{ f }}" type="number" value="0"></div>
+    {% endfor %}
+    <div class="md:col-span-2">
+      <button class="btn btn-brand">Submit report</button>
+      <span class="text-xs text-gray-400 ml-2">Submitting for an existing period updates it. All entries are audit-logged.</span>
+    </div>
+  </form>
+</div>
+{% endblock %}

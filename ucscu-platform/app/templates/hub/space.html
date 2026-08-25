@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}#{{ s.name }} — Hub{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1"># {{ s.name }}</h1>
+<p class="text-sm text-gray-500 mb-5">{{ s.description }} <span class="badge b-gray">{{ s.scope }}</span></p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    {% if me.role in ('admin','staff','board') or s.scope in ('all','sacco_leaders') %}
+    <div class="card">
+      <form method="post" action="{{ url_for('hub.post', sid=s.id) }}">
+        <textarea class="input" name="body" rows="3" placeholder="Share with #{{ s.name }}..." required></textarea>
+        <button class="btn btn-brand mt-2">Post</button>
+      </form>
+    </div>
+    {% endif %}
+    {% for p in posts %}
+    <div class="card">
+      <div class="flex items-center gap-2">
+        <div class="brand rounded-full w-8 h-8 flex items-center justify-center text-white font-bold text-sm">{{ p.author.full_name[0] }}</div>
+        <div><span class="font-semibold text-sm">{{ p.author.full_name }}</span>
+          <span class="text-xs text-gray-400">· {{ p.at.strftime('%d %b %H:%M') }}</span></div>
+      </div>
+      <p class="text-sm mt-2 whitespace-pre-line">{{ p.body }}</p>
+      <div class="mt-2 pl-3 border-l-2 border-gray-200 space-y-2">
+        {% for r in p.replies %}
+        <p class="text-sm"><b class="text-xs">{{ r.author.full_name }}</b> {{ r.body }}
+          <span class="text-xs text-gray-400">· {{ r.at.strftime('%d %b %H:%M') }}</span></p>
+        {% endfor %}
+        <form method="post" action="{{ url_for('hub.reply', pid=p.id) }}" class="flex gap-2">
+          <input class="input text-sm" name="body" placeholder="Reply...">
+          <button class="btn btn-ghost text-xs px-2 py-1">Send</button>
+        </form>
+      </div>
+    </div>
+    {% else %}<div class="card text-gray-400 text-sm">No posts yet — be the first.</div>{% endfor %}
+  </div>
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Space rules</h2>
+    <p class="text-sm text-gray-600">
+      {% if s.scope == 'all' %}Visible to every member of the platform including SACCO users.{% endif %}
+      {% if s.scope == 'staff_only' %}Visible to UCSCU staff and board only — SACCO users cannot see this space.{% endif %}
+      {% if s.scope == 'board_only' %}Visible to board members and administrators only.{% endif %}
+      {% if s.scope == 'sacco_leaders' %}Visible to staff, board and SACCO leaders — for movement-wide discussion.{% endif %}
+    </p>
+  </div>
+</div>
+{% endblock %}

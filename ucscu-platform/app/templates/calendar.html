@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Shared Calendar — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Shared calendar</h1>
+<p class="text-sm text-gray-500 mb-5">All meetings, trainings, deadlines and approved leave in one view</p>
+<div class="card overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Kind</th><th>Item</th></tr></thead>
+    <tbody>
+      {% for e in events %}
+      <tr class="{{ 'bg-red-50' if e.date < today else 'bg-yellow-50' if e.date == today }}">
+        <td class="whitespace-nowrap font-medium">{{ e.date.strftime('%d %b %Y') }}
+          {% if e.date == today %}<span class="badge b-warn">today</span>{% endif %}
+          {% if e.date < today %}<span class="badge b-danger">past</span>{% endif %}</td>
+        <td><span class="badge {{ e.kind_class }}">{{ e.kind }}</span></td>
+        <td>{{ e.title }}</td>
+      </tr>
+      {% else %}<tr><td colspan="3" class="text-gray-400">Nothing scheduled.</td>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

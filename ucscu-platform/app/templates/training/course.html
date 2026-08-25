@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ c.title }} — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">{{ c.title }}</h1>
+<p class="text-sm text-gray-500 mb-5">{{ c.category }} · {{ c.description }}</p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    {% for l in lessons %}
+    <div class="card">
+      <h2 class="font-bold mb-1">Lesson {{ l.order }}: {{ l.title }}</h2>
+      <p class="text-sm text-gray-700 whitespace-pre-line">{{ l.content }}</p>
+    </div>
+    {% else %}
+    <div class="card text-gray-400 text-sm">No lessons yet.</div>
+    {% endfor %}
+  </div>
+  {% if me.role in ('staff','admin') %}
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Add lesson</h2>
+    <form method="post" action="{{ url_for('training.add_lesson', cid=c.id) }}" class="space-y-2">
+      <input class="input" name="title" placeholder="Lesson title" required>
+      <textarea class="input" name="content" rows="6" placeholder="Lesson content"></textarea>
+      <button class="btn btn-brand w-full">Add lesson</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

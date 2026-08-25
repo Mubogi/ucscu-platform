@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ m.title }} — Register{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">{{ m.title }}</h1>
+<p class="text-sm text-gray-500 mb-5">{{ m.on_date }} · {{ m.venue or 'Venue TBA' }}</p>
+<form method="post" action="{{ url_for('attendance.mark', mid=m.id) }}">
+<div class="card overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>Staff member</th><th>Role</th><th>Present</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      {% set rec = m.records|selectattr('user_id','==',u.id)|first %}
+      <tr>
+        <td class="font-medium">{{ u.full_name }}</td>
+        <td class="capitalize">{{ u.role }}</td>
+        <td><input type="checkbox" name="user_{{ u.id }}" {{ 'checked' if rec and rec.present }}
+            {% if me.role not in ('admin','staff','board') %}disabled{% endif %}></td>
+        <td><input class="input text-xs" name="note_{{ u.id }}" value="{{ rec.note if rec else '' }}"
+            {% if me.role not in ('admin','staff','board') %}disabled{% endif %}></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if me.role in ('admin','staff','board') %}
+  <button class="btn btn-brand mt-3">Save register</button>
+  {% endif %}
+</div>
+</form>
+<a href="{{ url_for('attendance.index') }}" class="btn btn-ghost mt-4">← Attendance</a>
+{% endblock %}

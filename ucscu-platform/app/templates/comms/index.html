@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Announcements — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">Announcements & circulars</h1>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    {% for a in items %}
+    <div class="card">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h2 class="font-bold">{{ a.title }}</h2>
+        <span class="badge {{ 'b-info' if a.audience=='All' else 'b-gray' }}">{{ a.audience }}</span>
+      </div>
+      <p class="text-sm text-gray-700 mt-2 whitespace-pre-line">{{ a.body }}</p>
+      <p class="text-xs text-gray-400 mt-3">{{ a.author }} · {{ a.posted_on }}</p>
+    </div>
+    {% else %}<div class="card text-gray-400 text-sm">No announcements.</div>{% endfor %}
+  </div>
+  {% if me.role in ('staff','admin','board') %}
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Publish announcement</h2>
+    <form method="post" action="{{ url_for('comms.post') }}" class="space-y-2">
+      <input class="input" name="title" placeholder="Title" required>
+      <select class="input" name="audience">
+        <option>All</option><option>Central</option><option>Eastern</option><option>Northern</option><option>Western</option>
+      </select>
+      <textarea class="input" name="body" rows="5" placeholder="Message..."></textarea>
+      <button class="btn btn-brand w-full">Publish</button>
+    </form>
+    <p class="text-xs text-gray-400 mt-2">In production, publishing fans out to member SACCO contacts via SMS (Africa's Talking / Twilio) and email.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

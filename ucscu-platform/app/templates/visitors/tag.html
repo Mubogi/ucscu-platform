@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Visitor Tag {{ v.tag_no }}</title>
+  <style>
+    body { font-family: sans-serif; display:flex; justify-content:center; padding:2rem; }
+    .tag { border:3px solid #1a5c2a; border-radius:1rem; padding:2rem 3rem; text-align:center; max-width:400px; }
+    .org { color:#1a5c2a; font-weight:800; font-size:1.2rem; }
+    .no { font-size:3rem; font-weight:900; margin:1rem 0; color:#e8a713; }
+    .name { font-size:1.3rem; font-weight:700; }
+    .meta { color:#555; margin-top:.5rem; font-size:.9rem; }
+    @media print { body { padding:0; } }
+  </style>
+</head>
+<body onload="window.print()">
+  <div class="tag">
+    <div class="org">UCSCU — Visitor Pass</div>
+    <div class="no">{{ v.tag_no }}</div>
+    <div class="name">{{ v.name }}</div>
+    <div class="meta">{{ v.organization or 'Individual' }}<br>
+      Host: {{ v.host.full_name if v.host else 'Reception' }}<br>
+      {{ v.purpose or '' }}</div>
+  </div>
+</body>
+</html>

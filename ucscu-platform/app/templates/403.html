@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card text-center py-16">
+  <h1 class="text-2xl font-bold text-red-700 mb-2">403 — Not permitted</h1>
+  <p class="text-gray-600">Your role does not allow this action. Contact the UCSCU secretariat if you believe this is a mistake.</p>
+  <a href="{{ url_for('main.dashboard') }}" class="btn btn-brand mt-6">Back to dashboard</a>
+</div>
+{% endblock %}

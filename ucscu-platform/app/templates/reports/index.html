@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}PEARLS Reports — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5 flex-wrap gap-2">
+  <div>
+    <h1 class="text-2xl font-bold">Sector supervision — PEARLS</h1>
+    <p class="text-sm text-gray-500">Latest quarterly report per SACCO with automated ratio analysis and early-warning flags</p>
+  </div>
+  <div class="flex gap-2">
+    {% if me.role in ('staff','admin','sacco') %}<a href="{{ url_for('reports.submit') }}" class="btn btn-gold">+ Submit report</a>{% endif %}
+    {% if me.role in ('staff','admin','board','regulator') %}<a href="{{ url_for('reports.export') }}" class="btn btn-ghost">Export CSV</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">SECTOR SAVINGS</div><div class="text-lg font-bold text-brand">{{ agg.savings|ugx }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">LOANS OUTSTANDING</div><div class="text-lg font-bold text-brand">{{ agg.loans|ugx }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">TOTAL ASSETS</div><div class="text-lg font-bold text-brand">{{ agg.assets|ugx }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">MEMBERS SERVED</div><div class="text-lg font-bold text-brand">{{ "{:,}".format(agg.members) }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">SACCOS AT RISK</div><div class="text-lg font-bold {{ 'text-red-600' if agg.at_risk else 'text-brand' }}">{{ agg.at_risk }}</div></div>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="tbl">
+    <thead><tr>
+      <th>SACCO</th><th>Period</th><th>P<br><span class="font-normal text-[10px]">coverage %</span></th>
+      <th>E<br><span class="font-normal text-[10px]">savings/assets %</span></th>
+      <th>E<br><span class="font-normal text-[10px]">reserves/assets %</span></th>
+      <th>A<br><span class="font-normal text-[10px]">PAR %</span></th>
+      <th>R<br><span class="font-normal text-[10px]">ROA %</span></th>
+      <th>L<br><span class="font-normal text-[10px]">liquidity %</span></th>
+      <th>S<br><span class="font-normal text-[10px]">growth %</span></th>
+      <th>Early warning</th>
+    </tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="font-medium whitespace-nowrap"><a class="text-brand" href="{{ url_for('reports.history', sid=r.sacco.id) }}">{{ r.sacco.name }}</a></td>
+        <td>{{ r.report.period }}</td>
+        <td>{{ r.pearls.P_delinquency_coverage }}</td>
+        <td>{{ r.pearls.E_savings_to_assets }}</td>
+        <td class="{{ 'text-red-600 font-bold' if r.pearls.E_reserves_to_assets < 10 }}">{{ r.pearls.E_reserves_to_assets }}</td>
+        <td class="{{ 'text-red-600 font-bold' if r.pearls.A_portfolio_at_risk > 5 }}">{{ r.pearls.A_portfolio_at_risk }}</td>
+        <td class="{{ 'text-red-600 font-bold' if r.pearls.R_roa < 0 }}">{{ r.pearls.R_roa }}</td>
+        <td class="{{ 'text-red-600 font-bold' if r.pearls.L_liquidity < 10 }}">{{ r.pearls.L_liquidity }}</td>
+        <td>{{ r.pearls.S_asset_growth if r.pearls.S_asset_growth is not none else '—' }}</td>
+        <td>{% for text, lvl in r.flags %}<span class="badge b-{{ lvl }} mr-1">{{ text }}</span>{% endfor %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="text-xs text-gray-400 mt-3">Targets: PAR &lt; 5% · liquidity 10–20% of assets · reserves ≥ 10% of assets · positive ROA · positive asset growth.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ s.name }} — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5 flex-wrap gap-2">
+  <div>
+    <h1 class="text-2xl font-bold">{{ s.name }}</h1>
+    <p class="text-sm text-gray-500">{{ s.reg_number }} · {{ s.district }}, {{ s.region }} Region · Member since {{ s.joined_date }}</p>
+  </div>
+  {% if me.role in ('staff','admin') %}<a href="{{ url_for('saccos.edit', sid=s.id) }}" class="btn btn-ghost">Edit profile</a>{% endif %}
+</div>
+
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card space-y-2 text-sm">
+    <h2 class="font-bold mb-2">Profile</h2>
+    <p><span class="text-gray-500">Contact:</span> {{ s.contact_person or '—' }}</p>
+    <p><span class="text-gray-500">Phone:</span> {{ s.phone or '—' }}</p>
+    <p><span class="text-gray-500">Email:</span> {{ s.email or '—' }}</p>
+    <p><span class="text-gray-500">Members:</span> {{ "{:,}".format(s.members_count) }}</p>
+    <p><span class="text-gray-500">UMRA:</span>
+      <span class="badge {{ 'b-ok' if s.umra_status=='Licensed' else 'b-warn' if s.umra_status=='Pending' else 'b-danger' }}">{{ s.umra_status }}</span>
+      {{ s.umra_licence or '' }}</p>
+    <p><span class="text-gray-500">Standing:</span>
+      <span class="badge {{ 'b-ok' if s.good_standing else 'b-danger' }}">{{ 'Good standing' if s.good_standing else 'Not in good standing' }}</span></p>
+  </div>
+
+  <div class="card">
+    <h2 class="font-bold mb-3">Annual dues</h2>
+    <table class="tbl">
+      <thead><tr><th>Year</th><th>Invoiced</th><th>Paid</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for d in s.dues %}
+        <tr><td>{{ d.year }}</td><td>{{ d.amount|ugx }}</td><td>{{ d.paid|ugx }}</td>
+          <td><span class="badge {{ 'b-ok' if d.status=='Paid' else 'b-warn' if d.status=='Partial' else 'b-danger' }}">{{ d.status }}</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if me.role in ('staff','admin','sacco') and s.dues %}
+    <form method="post" action="{{ url_for('saccos.pay_dues', sid=s.id, did=s.dues[-1].id) }}" class="mt-3 flex gap-2 items-end flex-wrap">
+      <div><label class="lbl">Amount (UGX)</label><input class="input w-36" name="amount" type="number" required></div>
+      <div><label class="lbl">MoMo / bank ref</label><input class="input w-36" name="reference"></div>
+      <button class="btn btn-brand">Record payment</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 class="font-bold mb-3">Latest financial report</h2>
+    {% set rep = s.reports|sort(attribute='period', reverse=true)|first %}
+    {% if rep %}
+    <p class="text-sm text-gray-500 mb-2">Period {{ rep.period }} · submitted {{ rep.submitted_on }}</p>
+    <ul class="text-sm space-y-1">
+      <li class="flex justify-between"><span>Savings</span><b>{{ rep.savings|ugx }}</b></li>
+      <li class="flex justify-between"><span>Loans outstanding</span><b>{{ rep.loans_outstanding|ugx }}</b></li>
+      <li class="flex justify-between"><span>Total assets</span><b>{{ rep.total_assets|ugx }}</b></li>
+      <li class="flex justify-between"><span>Net income</span><b>{{ rep.net_income|ugx }}</b></li>
+    </ul>
+    <a href="{{ url_for('reports.history', sid=s.id) }}" class="text-brand text-sm font-semibold mt-3 inline-block">Full history & PEARLS →</a>
+    {% else %}
+    <p class="text-sm text-gray-400">No reports submitted yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-4 mt-4">
+  <div class="card">
+    <h2 class="font-bold mb-3">CFF position</h2>
+    <p class="text-sm flex justify-between"><span>Pool deposits</span><b>{{ s.cff_deposits|sum(attribute='amount')|ugx }}</b></p>
+    <ul class="text-sm mt-2 space-y-1">
+      {% for l in s.cff_loans %}
+      <li class="flex justify-between"><span>Loan #{{ l.id }} — {{ l.purpose or 'Inter-lending' }}</span>
+        <span class="badge {{ 'b-ok' if l.status=='Repaid' else 'b-danger' if l.status=='Rejected' else 'b-info' }}">{{ l.status }}</span></li>
+      {% else %}<li class="text-gray-400">No CFF loans.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2 class="font-bold mb-3">Insurance policies (CIC Africa)</h2>
+    <ul class="text-sm space-y-1">
+      {% for p in s.policies %}
+      <li class="flex justify-between"><span>{{ p.policy_type }} · {{ p.policy_no }}</span>
+        <span class="badge b-ok">{{ p.status }}</span></li>
+      {% else %}<li class="text-gray-400">No policies on file.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

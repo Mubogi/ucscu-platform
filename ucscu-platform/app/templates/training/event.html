@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Event — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">{{ e.course.title }}</h1>
+<p class="text-sm text-gray-500 mb-5">{{ e.starts_on }}{{ ' → ' ~ e.ends_on if e.ends_on }} · {{ e.venue }} · Fee: {{ e.fee|ugx if e.fee else 'Free' }} · {{ e.seats_taken }}/{{ e.capacity }} seats</p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card lg:col-span-2 overflow-x-auto">
+    <h2 class="font-bold mb-3">Registered participants</h2>
+    <table class="tbl">
+      <thead><tr><th>Participant</th><th>SACCO</th><th>Attended</th><th>Certified</th></tr></thead>
+      <tbody>
+        {% for r in e.registrations %}
+        <tr>
+          <td class="font-medium">{{ r.participant }}</td>
+          <td>{{ r.sacco.name }}</td>
+          <td>{% if me.role in ('staff','admin') %}
+            <form method="post" action="{{ url_for('training.mark', rid=r.id) }}" class="inline">
+              <input type="hidden" name="field" value="attended">
+              <button class="badge {{ 'b-ok' if r.attended else 'b-gray' }} border-0 cursor-pointer">{{ 'Yes' if r.attended else 'No' }}</button>
+            </form>{% else %}{{ 'Yes' if r.attended else 'No' }}{% endif %}</td>
+          <td>{% if me.role in ('staff','admin') and r.attended %}
+            <form method="post" action="{{ url_for('training.mark', rid=r.id) }}" class="inline">
+              <input type="hidden" name="field" value="certified">
+              <button class="badge {{ 'b-ok' if r.certified else 'b-gray' }} border-0 cursor-pointer">{{ 'Yes' if r.certified else 'No' }}</button>
+            </form>{% else %}{{ 'Yes' if r.certified else 'No' }}{% endif %}</td>
+        </tr>
+        {% else %}<tr><td colspan="4" class="text-gray-400">No registrations yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if me.role in ('staff','admin','sacco') %}
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Register participant</h2>
+    <form method="post" action="{{ url_for('training.register', eid=e.id) }}" class="space-y-2">
+      <input class="input" name="participant" placeholder="Participant full name" required>
+      <select class="input" name="sacco_id">
+        {% if me.role == 'sacco' %}<option value="{{ me.sacco_id }}">{{ me.sacco.name }}</option>
+        {% else %}{% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}{% endif %}
+      </select>
+      <button class="btn btn-brand w-full">Register</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+<a href="{{ url_for('training.index') }}" class="btn btn-ghost mt-4">← All trainings</a>
+{% endblock %}

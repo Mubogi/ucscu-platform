@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ m.title }} — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">{{ m.title }}</h1>
+<p class="text-sm text-gray-500 mb-5">{{ m.body_type }} · {{ m.meets_on }} · {{ m.venue }}</p>
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="space-y-4">
+    <div class="card">
+      <h2 class="font-bold mb-2">Agenda</h2>
+      <p class="text-sm whitespace-pre-line text-gray-700">{{ m.agenda or 'No agenda recorded.' }}</p>
+    </div>
+    <div class="card">
+      <h2 class="font-bold mb-2">Minutes</h2>
+      {% if me.role in ('staff','admin') %}
+      <form method="post">
+        <textarea class="input" name="minutes" rows="8">{{ m.minutes or '' }}</textarea>
+        <button class="btn btn-brand mt-2">Save minutes</button>
+      </form>
+      {% else %}
+      <p class="text-sm whitespace-pre-line text-gray-700">{{ m.minutes or 'Minutes not yet recorded.' }}</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Resolutions</h2>
+    <ul class="space-y-3">
+      {% for r in m.resolutions %}
+      <li class="border-b pb-3">
+        <p class="text-sm font-medium">{{ r.text }}</p>
+        <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
+          <span>For: <b>{{ r.votes_for }}</b></span><span>Against: <b>{{ r.votes_against }}</b></span><span>Abstain: <b>{{ r.votes_abstain }}</b></span>
+          <span class="badge {{ 'b-ok' if r.status=='Adopted' else 'b-danger' if r.status=='Rejected' else 'b-warn' }}">{{ r.status }}</span>
+        </div>
+        {% if me.role in ('board','admin') and r.status == 'Open' %}
+        <div class="flex gap-1 mt-2">
+          {% for v, lbl in [('for','Vote for'),('against','Vote against'),('abstain','Abstain')] %}
+          <form method="post" action="{{ url_for('governance.vote', rid=r.id, vote=v) }}">
+            <button class="btn btn-ghost text-xs px-2 py-1">{{ lbl }}</button></form>
+          {% endfor %}
+          <form method="post" action="{{ url_for('governance.close_vote', rid=r.id) }}">
+            <button class="btn btn-brand text-xs px-2 py-1">Close & declare</button></form>
+        </div>
+        {% endif %}
+      </li>
+      {% else %}<li class="text-sm text-gray-400">No resolutions proposed.</li>{% endfor %}
+    </ul>
+    {% if me.role in ('staff','admin','board') %}
+    <form method="post" action="{{ url_for('governance.add_resolution', mid=m.id) }}" class="mt-4 space-y-2 border-t pt-3">
+      <input class="input" name="text" placeholder="Propose a resolution..." required>
+      <button class="btn btn-brand w-full">Propose</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<a href="{{ url_for('governance.index') }}" class="btn btn-ghost mt-4">← All meetings</a>
+{% endblock %}

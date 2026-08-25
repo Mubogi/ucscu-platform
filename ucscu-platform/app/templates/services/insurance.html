@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Insurance — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Risk management — CIC Africa (U) Ltd</h1>
+<p class="text-sm text-gray-500 mb-5">Insurance policies held by member SACCOs through the UCSCU × CIC Kenya joint venture</p>
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card overflow-x-auto">
+    <h2 class="font-bold mb-3">Policies</h2>
+    <table class="tbl">
+      <thead><tr><th>SACCO</th><th>Type</th><th>Policy no.</th><th>Premium</th><th>Cover period</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for p in policies %}
+        <tr><td class="font-medium">{{ p.sacco.name }}</td><td>{{ p.policy_type }}</td>
+          <td class="font-mono text-xs">{{ p.policy_no }}</td><td>{{ p.premium|ugx }}</td>
+          <td class="text-xs whitespace-nowrap">{{ p.starts_on }} → {{ p.ends_on }}</td>
+          <td><span class="badge b-ok">{{ p.status }}</span></td></tr>
+        {% else %}<tr><td colspan="6" class="text-gray-400">No policies recorded.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% if me.role in ('staff','admin') %}
+    <form method="post" action="{{ url_for('services.new_policy') }}" class="mt-4 space-y-2 border-t pt-3">
+      <p class="text-sm font-semibold">Record policy</p>
+      <select class="input" name="sacco_id">{% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+      <div class="flex gap-2">
+        <select class="input" name="policy_type"><option>Loan Protection</option><option>Life Savings Cover</option><option>Asset Insurance</option><option>Fidelity Bond</option></select>
+        <input class="input" name="policy_no" placeholder="Policy no.">
+      </div>
+      <input class="input" name="premium" type="number" placeholder="Annual premium (UGX)">
+      <div class="flex gap-2">
+        <input class="input" name="starts_on" type="date"><input class="input" name="ends_on" type="date">
+      </div>
+      <button class="btn btn-brand w-full">Save policy</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card overflow-x-auto">
+    <h2 class="font-bold mb-3">Claims</h2>
+    <table class="tbl">
+      <thead><tr><th>Policy</th><th>Description</th><th>Amount</th><th>Filed</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for c in claims %}
+        <tr><td class="font-mono text-xs">{{ c.policy.policy_no }}</td><td class="text-xs">{{ c.description }}</td>
+          <td>{{ c.amount|ugx }}</td><td class="text-xs">{{ c.filed_on }}</td>
+          <td><span class="badge {{ 'b-ok' if c.status=='Settled' else 'b-danger' if c.status=='Declined' else 'b-warn' }}">{{ c.status }}</span></td>
+          <td class="whitespace-nowrap">
+            {% if me.role in ('staff','admin') and c.status in ('Submitted','Assessed') %}
+            {% for st in ['Assessed','Settled','Declined'] %}
+            <form class="inline" method="post" action="{{ url_for('services.claim_status', cid=c.id, status=st) }}">
+              <button class="btn btn-ghost text-xs px-2 py-1">{{ st }}</button></form>
+            {% endfor %}
+            {% endif %}
+          </td></tr>
+        {% else %}<tr><td colspan="6" class="text-gray-400">No claims on file.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% if me.role in ('staff','admin','sacco') and policies %}
+    <form method="post" action="{{ url_for('services.new_claim') }}" class="mt-4 space-y-2 border-t pt-3">
+      <p class="text-sm font-semibold">File a claim</p>
+      <select class="input" name="policy_id">
+        {% for p in policies if me.role != 'sacco' or p.sacco_id == me.sacco_id %}
+        <option value="{{ p.id }}">{{ p.sacco.name }} — {{ p.policy_type }} ({{ p.policy_no }})</option>{% endfor %}
+      </select>
+      <input class="input" name="description" placeholder="Claim description">
+      <input class="input" name="amount" type="number" placeholder="Amount (UGX)">
+      <button class="btn btn-brand w-full">Submit claim</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ s.name }} — Report history{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">{{ s.name }}</h1>
+<p class="text-sm text-gray-500 mb-5">Financial report history and PEARLS trend</p>
+<div class="card overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>Period</th><th>Savings</th><th>Loans</th><th>Assets</th><th>Net income</th>
+      <th>PAR %</th><th>ROA %</th><th>Liquidity %</th><th>Flags</th></tr></thead>
+    <tbody>
+      {% for rep in reports %}
+      {% set prev = reports[loop.index0 - 1] if not loop.first else none %}
+      <tr>
+        <td class="font-medium">{{ rep.period }}</td>
+        <td>{{ rep.savings|ugx }}</td><td>{{ rep.loans_outstanding|ugx }}</td>
+        <td>{{ rep.total_assets|ugx }}</td><td>{{ rep.net_income|ugx }}</td>
+        <td>{{ rep.pearls(prev).A_portfolio_at_risk }}</td>
+        <td>{{ rep.pearls(prev).R_roa }}</td>
+        <td>{{ rep.pearls(prev).L_liquidity }}</td>
+        <td>{% for text, lvl in rep.flags(prev) %}<span class="badge b-{{ lvl }} mr-1">{{ text }}</span>{% endfor %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<a href="{{ url_for('reports.index') }}" class="btn btn-ghost mt-4">← Back to sector view</a>
+{% endblock %}

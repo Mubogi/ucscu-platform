@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Training — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">Training & capacity building</h1>
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="font-bold">Course catalogue (e-learning)</h2>
+    </div>
+    <ul class="space-y-3">
+      {% for c in courses %}
+      <li class="border-b pb-2">
+        <a class="text-brand font-semibold" href="{{ url_for('training.course', cid=c.id) }}">{{ c.title }}</a>
+        <span class="badge b-gray ml-1">{{ c.category }}</span>
+        <p class="text-xs text-gray-500">{{ c.description }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if me.role in ('staff','admin') %}
+    <form method="post" action="{{ url_for('training.new_course') }}" class="mt-4 space-y-2 border-t pt-3">
+      <p class="text-sm font-semibold">Add course</p>
+      <input class="input" name="title" placeholder="Course title" required>
+      <div class="flex gap-2">
+        <select class="input" name="category"><option>Governance</option><option>Finance</option><option>Technology</option><option>Leadership</option></select>
+        <button class="btn btn-brand">Add</button>
+      </div>
+      <textarea class="input" name="description" placeholder="Description" rows="2"></textarea>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card overflow-x-auto">
+    <h2 class="font-bold mb-3">Training events</h2>
+    <table class="tbl">
+      <thead><tr><th>Course</th><th>Dates</th><th>Venue</th><th>Seats</th><th>Fee</th><th></th></tr></thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td class="font-medium">{{ e.course.title }}</td>
+          <td class="whitespace-nowrap text-xs">{{ e.starts_on }}{{ ' → ' ~ e.ends_on if e.ends_on }}</td>
+          <td class="text-xs">{{ e.venue }}</td>
+          <td>{{ e.seats_taken }}/{{ e.capacity }}</td>
+          <td>{{ e.fee|ugx if e.fee else 'Free' }}</td>
+          <td><a class="text-brand font-semibold text-xs" href="{{ url_for('training.event', eid=e.id) }}">Manage →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if me.role in ('staff','admin') %}
+    <form method="post" action="{{ url_for('training.new_event') }}" class="mt-4 space-y-2 border-t pt-3">
+      <p class="text-sm font-semibold">Schedule event</p>
+      <select class="input" name="course_id">{% for c in courses %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}</select>
+      <input class="input" name="venue" placeholder="Venue">
+      <div class="flex gap-2">
+        <input class="input" name="starts_on" type="date" required>
+        <input class="input" name="ends_on" type="date">
+      </div>
+      <div class="flex gap-2">
+        <input class="input" name="capacity" type="number" placeholder="Capacity" value="40">
+        <input class="input" name="fee" type="number" placeholder="Fee (UGX)" value="0">
+        <button class="btn btn-brand">Schedule</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

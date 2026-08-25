@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5 flex-wrap gap-2">
+  <div>
+    <h1 class="text-2xl font-bold">Sector Dashboard</h1>
+    <p class="text-sm text-gray-500">National view of the SACCO movement · {{ now if now else '' }}</p>
+  </div>
+  {% if me.role in ('staff','admin') %}
+  <div class="flex gap-2">
+    <a href="{{ url_for('saccos.new') }}" class="btn btn-gold">+ Register SACCO</a>
+    <a href="{{ url_for('reports.export') }}" class="btn btn-ghost">Export sector CSV</a>
+  </div>
+  {% elif me.role in ('board','regulator') %}
+  <a href="{{ url_for('reports.export') }}" class="btn btn-ghost">Export sector CSV</a>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">MEMBER SACCOs</div>
+    <div class="text-2xl font-bold text-brand">{{ stats.saccos }}</div>
+    <div class="text-xs text-gray-400">{{ stats.good_standing }} in good standing</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">INDIVIDUAL MEMBERS</div>
+    <div class="text-2xl font-bold text-brand">{{ "{:,}".format(stats.members) }}</div>
+    <div class="text-xs text-gray-400">across the movement</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">CFF POOL DEPOSITS</div>
+    <div class="text-2xl font-bold text-brand">{{ stats.pool_deposits|ugx }}</div>
+    <div class="text-xs text-gray-400">pooled from SACCOs</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">CFF LIQUID BALANCE</div>
+    <div class="text-2xl font-bold {{ 'text-red-600' if stats.pool_liquid < 50000000 else 'text-brand' }}">{{ stats.pool_liquid|ugx }}</div>
+    <div class="text-xs text-gray-400">{{ stats.loans_outstanding|ugx }} on loan · {{ stats.invested|ugx }} invested</div></div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card">
+    <h2 class="font-bold mb-3">⚠️ Compliance calendar</h2>
+    <ul class="space-y-2 text-sm">
+      {% for d in deadlines %}
+      <li class="flex justify-between items-center gap-2">
+        <span>{{ d.title }}</span>
+        <span class="badge {{ 'b-danger' if d.status=='Overdue' else 'b-warn' if d.status=='Due soon' else 'b-info' }}">{{ d.status }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <a href="{{ url_for('saccos.compliance') }}" class="text-brand text-sm font-semibold mt-3 inline-block">Full calendar →</a>
+  </div>
+  <div class="card">
+    <h2 class="font-bold mb-3">🎓 Upcoming trainings</h2>
+    <ul class="space-y-2 text-sm">
+      {% for e in events %}
+      <li><a class="text-brand font-medium" href="{{ url_for('training.event', eid=e.id) }}">{{ e.course.title }}</a>
+        <div class="text-xs text-gray-400">{{ e.starts_on }} · {{ e.venue }} · {{ e.seats_taken }}/{{ e.capacity }} seats</div></li>
+      {% else %}<li class="text-gray-400">No upcoming events.</li>{% endfor %}
+    </ul>
+    <a href="{{ url_for('training.index') }}" class="text-brand text-sm font-semibold mt-3 inline-block">All trainings →</a>
+  </div>
+  <div class="card">
+    <h2 class="font-bold mb-3">📌 Action needed</h2>
+    <ul class="space-y-2 text-sm">
+      <li class="flex justify-between"><span>Pending CFF loan applications</span><span class="badge b-warn">{{ stats.pending_loans }}</span></li>
+      <li class="flex justify-between"><span>Pending stationery orders</span><span class="badge b-warn">{{ stats.pending_orders }}</span></li>
+      <li class="flex justify-between"><span>Quarterly reports on file</span><span class="badge b-info">{{ stats.reports }}</span></li>
+    </ul>
+  </div>
+</div>
+
+{% if me.role == 'admin' %}
+<div class="card mt-4">
+  <h2 class="font-bold mb-3">🧾 Recent activity</h2>
+  <ul class="text-sm space-y-1">
+    {% for r in recent %}<li class="text-gray-600"><span class="text-gray-400 text-xs">{{ r.at.strftime('%d %b %H:%M') }}</span> · <b>{{ r.actor }}</b> — {{ r.action }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

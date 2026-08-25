@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Compliance Calendar — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">Compliance calendar</h1>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card lg:col-span-2 overflow-x-auto">
+    <table class="tbl">
+      <thead><tr><th>Deadline</th><th>Category</th><th>Due date</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for d in items %}
+        <tr><td class="font-medium">{{ d.title }}</td><td><span class="badge b-gray">{{ d.category }}</span></td>
+          <td class="whitespace-nowrap">{{ d.due_date }}</td>
+          <td><span class="badge {{ 'b-danger' if d.status=='Overdue' else 'b-warn' if d.status=='Due soon' else 'b-info' }}">{{ d.status }}</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if me.role in ('staff','admin') %}
+  <div class="card">
+    <h2 class="font-bold mb-3">Add deadline</h2>
+    <form method="post" action="{{ url_for('saccos.new_deadline') }}" class="space-y-3">
+      <div><label class="lbl">Title</label><input class="input" name="title" required></div>
+      <div><label class="lbl">Category</label>
+        <select class="input" name="category"><option>UMRA</option><option>Audit</option><option>AGM</option><option>Tax</option></select></div>
+      <div><label class="lbl">Due date</label><input class="input" name="due_date" type="date" required></div>
+      <button class="btn btn-brand w-full">Add</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

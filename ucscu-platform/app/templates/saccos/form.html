@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if sacco else 'Register' }} SACCO — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">{{ 'Edit ' + sacco.name if sacco else 'Register a new member SACCO' }}</h1>
+<div class="card max-w-2xl">
+  <form method="post" class="grid md:grid-cols-2 gap-4">
+    <div class="md:col-span-2"><label class="lbl">SACCO name</label>
+      <input class="input" name="name" required value="{{ sacco.name if sacco else '' }}"></div>
+    <div><label class="lbl">Registration number</label>
+      <input class="input" name="reg_number" required value="{{ sacco.reg_number if sacco else '' }}"></div>
+    <div><label class="lbl">Members</label>
+      <input class="input" name="members_count" type="number" value="{{ sacco.members_count if sacco else 0 }}"></div>
+    <div><label class="lbl">District</label>
+      <input class="input" name="district" required value="{{ sacco.district if sacco else '' }}"></div>
+    <div><label class="lbl">Region</label>
+      <select class="input" name="region">
+        {% for r in ['Central','Eastern','Northern','Western'] %}
+        <option {{ 'selected' if sacco and sacco.region==r }}>{{ r }}</option>{% endfor %}</select></div>
+    <div><label class="lbl">Contact person</label>
+      <input class="input" name="contact_person" value="{{ sacco.contact_person if sacco else '' }}"></div>
+    <div><label class="lbl">Phone</label>
+      <input class="input" name="phone" value="{{ sacco.phone if sacco else '' }}"></div>
+    <div class="md:col-span-2"><label class="lbl">Email</label>
+      <input class="input" name="email" type="email" value="{{ sacco.email if sacco else '' }}"></div>
+    <div><label class="lbl">UMRA licence no.</label>
+      <input class="input" name="umra_licence" value="{{ sacco.umra_licence if sacco else '' }}"></div>
+    <div><label class="lbl">UMRA status</label>
+      <select class="input" name="umra_status">
+        {% for st in ['Licensed','Pending','Unlicensed'] %}
+        <option {{ 'selected' if sacco and sacco.umra_status==st }}>{{ st }}</option>{% endfor %}</select></div>
+    <div><label class="lbl">Annual dues (UGX)</label>
+      <input class="input" name="annual_dues" type="number" value="{{ sacco.annual_dues if sacco else 500000 }}"></div>
+    {% if sacco %}
+    <div class="flex items-end pb-2">
+      <label class="flex items-center gap-2 text-sm font-semibold">
+        <input type="checkbox" name="good_standing" {{ 'checked' if sacco.good_standing }}> In good standing</label>
+    </div>
+    {% endif %}
+    <div class="md:col-span-2 flex gap-2">
+      <button class="btn btn-brand">{{ 'Save changes' if sacco else 'Register SACCO' }}</button>
+      <a href="{{ url_for('saccos.index') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

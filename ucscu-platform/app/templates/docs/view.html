@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ d.title }} — Docs{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">{{ d.title }}</h1>
+<p class="text-sm text-gray-500 mb-5">{{ d.category }} · created {{ d.at.strftime('%d %b %Y') }} by {{ d.created_by }}</p>
+<div class="card max-w-3xl">
+  {% if me.role in ('admin','staff','board') %}
+  <form method="post">
+    <textarea class="input font-mono text-sm" name="content" rows="18">{{ d.content }}</textarea>
+    <button class="btn btn-brand mt-2">Save changes</button>
+  </form>
+  {% else %}
+  <pre class="text-sm whitespace-pre-wrap">{{ d.content }}</pre>
+  {% endif %}
+</div>
+<a href="{{ url_for('docs.index') }}" class="btn btn-ghost mt-4">← Library</a>
+{% endblock %}

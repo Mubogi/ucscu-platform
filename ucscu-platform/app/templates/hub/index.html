@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Communication Hub — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Communication Hub</h1>
+<p class="text-sm text-gray-500 mb-5">Internal social feed — spaces scoped by hierarchy</p>
+<div class="grid lg:grid-cols-4 gap-4">
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">Spaces</h2>
+    <ul class="space-y-2">
+      {% for s in spaces %}
+      <li><a class="text-brand font-semibold" href="{{ url_for('hub.space', sid=s.id) }}"># {{ s.name }}</a>
+        <span class="badge b-gray text-[10px]">{{ s.scope }}</span>
+        <div class="text-xs text-gray-400">{{ s.description }}</div></li>
+      {% endfor %}
+    </ul>
+    {% if me.role in ('admin','staff') %}
+    <form method="post" action="{{ url_for('hub.new_space') }}" class="mt-4 space-y-2 border-t pt-3">
+      <p class="text-sm font-semibold">Create space</p>
+      <input class="input" name="name" placeholder="Space name" required>
+      <select class="input" name="scope">
+        <option value="all">Everyone</option><option value="staff_only">UCSCU staff & board only</option>
+        <option value="board_only">Board & admin only</option><option value="sacco_leaders">SACCO leaders</option>
+      </select>
+      <input class="input" name="description" placeholder="Description">
+      <button class="btn btn-brand w-full">Create</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="lg:col-span-3 space-y-4">
+    {% for p in latest %}
+    <div class="card">
+      <div class="flex items-center gap-2">
+        <div class="brand rounded-full w-8 h-8 flex items-center justify-center text-white font-bold text-sm">{{ p.author.full_name[0] }}</div>
+        <div>
+          <span class="font-semibold text-sm">{{ p.author.full_name }}</span>
+          <span class="text-xs text-gray-400">in #{{ p.space.name }} · {{ p.at.strftime('%d %b %H:%M') }}</span>
+        </div>
+      </div>
+      <p class="text-sm mt-2 whitespace-pre-line">{{ p.body }}</p>
+      <div class="mt-2 pl-3 border-l-2 border-gray-200 space-y-2">
+        {% for r in p.replies %}
+        <p class="text-sm"><b class="text-xs">{{ r.author.full_name }}</b> {{ r.body }}
+          <span class="text-xs text-gray-400">· {{ r.at.strftime('%d %b %H:%M') }}</span></p>
+        {% endfor %}
+        <form method="post" action="{{ url_for('hub.reply', pid=p.id) }}" class="flex gap-2">
+          <input class="input text-sm" name="body" placeholder="Reply...">
+          <button class="btn btn-ghost text-xs px-2 py-1">Send</button>
+        </form>
+      </div>
+    </div>
+    {% else %}<div class="card text-gray-400 text-sm">Pick a space on the left to start the conversation.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

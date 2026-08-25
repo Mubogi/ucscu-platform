@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Confidential Reporting — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Confidential reporting</h1>
+<p class="text-sm text-gray-500 mb-5">Anonymous whistleblowing — fraud, misconduct, abuse. Your identity is never stored.</p>
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="card h-fit">
+    <h2 class="font-bold mb-3">🔒 File a report anonymously</h2>
+    <form method="post" action="{{ url_for('whistle.file_report') }}" class="space-y-2">
+      <select class="input" name="category">
+        <option>Fraud</option><option>Corruption / bribery</option><option>Misuse of funds</option>
+        <option>Harassment / abuse</option><option>Conflict of interest</option><option>Other</option>
+      </select>
+      <textarea class="input" name="body" rows="5" required
+        placeholder="Describe what has happened, where, and who is involved. Do NOT include your name if you wish to remain anonymous."></textarea>
+      <button class="btn btn-brand w-full">Submit anonymously</button>
+    </form>
+    <p class="text-xs text-gray-400 mt-2">You will receive a token — keep it safe to check the status of your report.
+      No name, IP, or user account is stored with the report.</p>
+    <form method="post" action="{{ url_for('whistle.status') }}" class="mt-3 border-t pt-3 flex gap-2">
+      <input class="input" name="token" placeholder="Check status with token">
+      <button class="btn btn-ghost">Check</button>
+    </form>
+  </div>
+
+  {% if me.role in ('admin','staff','board') %}
+  <div class="card lg:col-span-2 overflow-x-auto">
+    <h2 class="font-bold mb-3">Case queue (staff view)</h2>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Category</th><th>Report</th><th>Filed</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td class="font-mono text-xs">{{ r.id }}</td>
+          <td><span class="badge b-danger">{{ r.category }}</span></td>
+          <td class="text-xs max-w-md">{{ r.body }}</td>
+          <td class="text-xs whitespace-nowrap">{{ r.filed_at.strftime('%d %b %H:%M') }}</td>
+          <td><span class="badge {{ 'b-ok' if r.status in ('Resolved','Closed') else 'b-info' if r.status=='Investigating' else 'b-warn' }}">{{ r.status }}</span></td>
+          <td class="whitespace-nowrap">
+            {% if me.role in ('admin','staff') %}
+            {% for st in ['Investigating','Resolved','Closed'] if st != r.status %}
+            <form class="inline" method="post" action="{{ url_for('whistle.set_status', rid=r.id, status=st) }}">
+              <button class="btn btn-ghost text-xs px-2 py-1">{{ st }}</button></form>
+            {% endfor %}
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}<tr><td colspan="6" class="text-gray-400">No cases filed.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <p class="text-xs text-gray-400 mt-2">Case content is visible to staff/admin only. The System Administrator cannot
+    see the identity of the reporter — there is none.</p>
+  </div>
+  {% else %}
+  <div class="card lg:col-span-2">
+    <h2 class="font-bold mb-3">Why report here?</h2>
+    <p class="text-sm text-gray-600">This channel is designed for reporting fraud, misuse of cooperative funds,
+    harassment and other serious misconduct. Reports bypass line managers and go to the oversight committee.
+    The system separates <b>who you are</b> from <b>what you report</b> — nothing links the report to your account.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

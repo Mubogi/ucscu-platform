@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}SACCO Registry — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5 flex-wrap gap-2">
+  <h1 class="text-2xl font-bold">Member SACCO Registry</h1>
+  {% if me.role in ('staff','admin') %}<a href="{{ url_for('saccos.new') }}" class="btn btn-gold">+ Register SACCO</a>{% endif %}
+</div>
+<div class="card mb-4">
+  <form method="get" class="flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-[200px]"><label class="lbl">Search</label><input class="input" name="q" value="{{ request.args.get('q','') }}" placeholder="SACCO name..."></div>
+    <div><label class="lbl">Region</label>
+      <select class="input" name="region"><option value="">All</option>
+        {% for r in regions %}<option {{ 'selected' if request.args.get('region')==r }}>{{ r }}</option>{% endfor %}</select></div>
+    <div><label class="lbl">Standing</label>
+      <select class="input" name="standing"><option value="">All</option>
+        <option value="good" {{ 'selected' if request.args.get('standing')=='good' }}>Good standing</option>
+        <option value="bad" {{ 'selected' if request.args.get('standing')=='bad' }}>Not in good standing</option></select></div>
+    <button class="btn btn-brand">Filter</button>
+  </form>
+</div>
+<div class="card overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>SACCO</th><th>Reg. No</th><th>District / Region</th><th>Members</th><th>UMRA</th><th>Standing</th><th></th></tr></thead>
+    <tbody>
+      {% for s in saccos %}
+      <tr>
+        <td class="font-semibold">{{ s.name }}</td>
+        <td class="font-mono text-xs">{{ s.reg_number }}</td>
+        <td>{{ s.district }} · {{ s.region }}</td>
+        <td>{{ "{:,}".format(s.members_count) }}</td>
+        <td><span class="badge {{ 'b-ok' if s.umra_status=='Licensed' else 'b-warn' if s.umra_status=='Pending' else 'b-danger' }}">{{ s.umra_status }}</span></td>
+        <td><span class="badge {{ 'b-ok' if s.good_standing else 'b-danger' }}">{{ 'Good' if s.good_standing else 'Poor' }}</span></td>
+        <td><a class="text-brand font-semibold" href="{{ url_for('saccos.detail', sid=s.id) }}">View →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

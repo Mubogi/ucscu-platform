@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Audit log — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-5">Audit log</h1>
+<div class="card overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>When</th><th>Actor</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for l in logs %}
+      <tr><td class="whitespace-nowrap text-gray-500">{{ l.at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td class="font-mono">{{ l.actor }}</td><td>{{ l.action }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
