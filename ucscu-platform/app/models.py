@@ -67,6 +67,55 @@ class DuesPayment(db.Model):
         return "Unpaid"
 
 
+class Broadcast(db.Model):
+    """A grouped message (SMS / WhatsApp / Call) with a per-recipient queue."""
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(160), nullable=False)
+    body = db.Column(db.Text)
+    channel = db.Column(db.String(20), default="SMS")  # SMS/WhatsApp/Call
+    scope = db.Column(db.String(40), default="All")    # All / region name / Custom
+    created_by = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    queue = db.relationship("BroadcastRecipient", backref="broadcast",
+                            cascade="all, delete-orphan")
+
+    @property
+    def total(self):
+        return len(self.queue)
+
+    @property
+    def sent(self):
+        return sum(1 for r in self.queue if r.status == "Sent")
+
+    @property
+    def failed(self):
+        return sum(1 for r in self.queue if r.status == "Failed")
+
+    @property
+    def queued(self):
+        return sum(1 for r in self.queue if r.status == "Queued")
+
+    @property
+    def coverage(self):
+        return round(self.sent / self.total * 100) if self.total else 0
+
+
+class BroadcastRecipient(db.Model):
+    """One queued message item — tracks what is covered and what is not."""
+    id = db.Column(db.Integer, primary_key=True)
+    broadcast_id = db.Column(db.Integer, db.ForeignKey("broadcast.id"), nullable=False)
+    sacco_id = db.Column(db.Integer, db.ForeignKey("sacco.id"), nullable=False)
+    phone = db.Column(db.String(40))
+    status = db.Column(db.String(20), default="Queued")  # Queued/Sent/Failed
+    attempts = db.Column(db.Integer, default=0)
+    error = db.Column(db.String(160))
+    queued_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime)
+
+    sacco = db.relationship("Sacco")
+
+
 class ComplianceDeadline(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(160), nullable=False)

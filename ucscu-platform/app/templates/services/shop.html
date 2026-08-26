@@ -6,6 +6,9 @@
 <div class="grid lg:grid-cols-2 gap-4">
   <div class="card overflow-x-auto">
     <h2 class="font-bold mb-3">Catalogue</h2>
+    {% if me.role in ('staff','admin','sacco') and me.role != 'sacco' %}
+    <input class="input w-64 mb-2" id="member_filter" placeholder="🔎 Search member for orders">
+    {% endif %}
     <table class="tbl">
       <thead><tr><th>Product</th><th>Unit price</th><th>In stock</th>{% if me.role in ('staff','admin','sacco') %}<th>Order</th>{% endif %}</tr></thead>
       <tbody>
@@ -18,7 +21,7 @@
           <td>
             <form method="post" action="{{ url_for('services.order') }}" class="flex gap-1">
               {% if me.role == 'sacco' %}<input type="hidden" name="sacco_id" value="{{ me.sacco_id }}">
-              {% else %}<select class="input w-32 text-xs" name="sacco_id">{% for s in saccos %}<option value="{{ s.id }}">{{ s.name[:18] }}</option>{% endfor %}</select>{% endif %}
+              {% else %}<select class="input w-32 text-xs member-pick" name="sacco_id">{% for s in saccos %}<option value="{{ s.id }}">{{ s.name[:18] }}</option>{% endfor %}</select>{% endif %}
               <input type="hidden" name="product_id" value="{{ p.id }}">
               <input class="input w-20 text-xs" name="quantity" type="number" min="1" value="1" required>
               <button class="btn btn-brand text-xs px-2 py-1">Order</button>
@@ -62,4 +65,14 @@
     </table>
   </div>
 </div>
+{% if me.role in ('staff','admin') %}{# Search filter above — checks every member-pick select #}
+<script>
+  document.getElementById('member_filter').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('select.member-pick').forEach(sel => {
+      [...sel.options].forEach(o => o.hidden = !o.text.toLowerCase().includes(q));
+    });
+  });
+</script>
+{% endif %}
 {% endblock %}

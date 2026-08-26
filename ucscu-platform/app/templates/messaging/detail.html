@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Broadcast queue — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="flex items-start justify-between mb-4">
+  <div>
+    <h1 class="text-2xl font-bold mb-1">{{ b.title }}</h1>
+    <p class="text-sm text-gray-500">{{ b.channel }} · group "{{ b.scope }}" · {{ b.total }} recipient(s)</p>
+  </div>
+  {% if me.role in ('staff','board','admin') %}
+  <div class="flex gap-2">
+    {% if b.queued > 0 %}
+    <form method="post" action="{{ url_for('messaging.process', bid=b.id) }}">
+      <button class="btn btn-brand">Process queue ({{ b.queued }} pending)</button>
+    </form>
+    {% endif %}
+    {% if b.failed > 0 %}
+    <form method="post" action="{{ url_for('messaging.retry', bid=b.id) }}">
+      <button class="btn btn-ghost">Requeue failed ({{ b.failed }})</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">RECIPIENTS</div><div class="text-xl font-bold">{{ b.total }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">SENT (COVERED)</div><div class="text-xl font-bold text-brand">{{ b.sent }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">PENDING</div><div class="text-xl font-bold text-amber-600">{{ b.queued }}</div></div>
+  <div class="card"><div class="text-xs text-gray-500 font-semibold">FAILED</div><div class="text-xl font-bold text-red-600">{{ b.failed }}</div></div>
+</div>
+
+<div class="card overflow-x-auto">
+  <h2 class="font-bold mb-3">Coverage — {{ b.coverage }}%</h2>
+  <div class="h-2 bg-gray-200 rounded-full mb-4">
+    <div class="h-2 rounded-full {{ 'bg-green-500' if b.coverage == 100 else 'bg-yellow-400' }}" style="width:{{ b.coverage }}%"></div>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Member</th><th>Phone</th><th>Status</th><th>Attempts</th><th>Error / Sent at</th></tr></thead>
+    <tbody>
+      {% for r in b.queue %}
+      <tr>
+        <td class="font-medium">{{ r.sacco.name }}</td>
+        <td class="font-mono text-xs">{{ r.phone or '—' }}</td>
+        <td><span class="badge {{ 'b-ok' if r.status=='Sent' else 'b-danger' if r.status=='Failed' else 'b-warn' }}">{{ r.status }}</span></td>
+        <td>{{ r.attempts }}</td>
+        <td class="text-xs text-gray-500">{{ r.error or r.sent_at or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

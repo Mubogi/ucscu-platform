@@ -58,10 +58,13 @@
 
   <div class="space-y-4">
     {% if me.role in ('staff','admin','sacco') %}
+    {% if me.role != 'sacco' %}
+    <input class="input" id="member_filter" placeholder="🔎 Search member — filters both pickers">
+    {% endif %}
     <div class="card">
       <h2 class="font-bold mb-3">Record pool deposit</h2>
       <form method="post" action="{{ url_for('cff.deposit') }}" class="space-y-2">
-        <select class="input" name="sacco_id">
+        <select class="input member-pick" name="sacco_id">
           {% if me.role == 'sacco' %}<option value="{{ me.sacco_id }}">{{ me.sacco.name }}</option>
           {% else %}{% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}{% endif %}
         </select>
@@ -73,7 +76,7 @@
     <div class="card">
       <h2 class="font-bold mb-3">Apply for inter-lending</h2>
       <form method="post" action="{{ url_for('cff.apply') }}" class="space-y-2">
-        <select class="input" name="sacco_id">
+        <select class="input member-pick" name="sacco_id">
           {% if me.role == 'sacco' %}<option value="{{ me.sacco_id }}">{{ me.sacco.name }}</option>
           {% else %}{% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}{% endif %}
         </select>
@@ -86,6 +89,16 @@
         <button class="btn btn-gold w-full">Submit application</button>
       </form>
     </div>
+    {% if me.role != 'sacco' %}
+    <script>
+      document.getElementById('member_filter').addEventListener('input', e => {
+        const q = e.target.value.toLowerCase();
+        document.querySelectorAll('select.member-pick').forEach(sel => {
+          [...sel.options].forEach(o => o.hidden = !o.text.toLowerCase().includes(q));
+        });
+      });
+    </script>
+    {% endif %}
     {% endif %}
   </div>
 </div>
