@@ -49,10 +49,12 @@ def create_app():
     from .routes.whistle import bp as whistle_bp
     from .routes.docs import bp as docs_bp
     from .routes.calendar import bp as calendar_bp
+    from .routes.messaging import bp as messaging_bp
 
     for bp in (auth_bp, main_bp, saccos_bp, cff_bp, reports_bp,
                training_bp, services_bp, comms_bp, governance_bp,
-               attendance_bp, visitors_bp, hub_bp, whistle_bp, docs_bp, calendar_bp):
+               attendance_bp, visitors_bp, hub_bp, whistle_bp, docs_bp,
+               calendar_bp, messaging_bp):
         app.register_blueprint(bp)
 
     @app.context_processor

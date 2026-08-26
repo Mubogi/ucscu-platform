@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from .. import login_required, current_user
 from ..models import db, Sacco, DuesPayment, ComplianceDeadline, log_action
 
@@ -87,6 +87,27 @@ def pay_dues(sid, did):
     db.session.commit()
     flash("Dues payment recorded.", "ok")
     return redirect(url_for("saccos.detail", sid=sid))
+
+
+@bp.route("/api/search")
+@login_required()
+def api_search():
+    """Member picker for transactions — filter by name, reg number, district or phone."""
+    q = request.args.get("q", "").strip()
+    query = Sacco.query
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            db.or_(Sacco.name.ilike(like),
+                   Sacco.reg_number.ilike(like),
+                   Sacco.district.ilike(like),
+                   Sacco.contact_person.ilike(like),
+                   Sacco.phone.ilike(like)))
+    return jsonify([
+        {"id": s.id, "name": s.name, "reg_number": s.reg_number,
+         "district": s.district, "region": s.region,
+         "phone": s.phone, "email": s.email}
+        for s in query.order_by(Sacco.name).all()])
 
 
 @bp.route("/compliance")

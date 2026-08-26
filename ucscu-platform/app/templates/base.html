@@ -50,6 +50,7 @@
       <a class="navlink {{ 'active' if request.endpoint=='services.insurance' }}" href="{{ url_for('services.insurance') }}">🛡️ Insurance (CIC)</a>
       <a class="navlink {{ 'active' if request.endpoint=='services.shop' }}" href="{{ url_for('services.shop') }}">🛒 Stationery</a>
       <a class="navlink {{ 'active' if request.blueprint=='comms' }}" href="{{ url_for('comms.index') }}">📢 Announcements</a>
+      <a class="navlink {{ 'active' if request.blueprint=='messaging' }}" href="{{ url_for('messaging.index') }}">✉️ Messaging</a>
       <a class="navlink {{ 'active' if request.blueprint=='governance' }}" href="{{ url_for('governance.index') }}">🏛️ Governance</a>
       <div class="pt-3 mt-3 border-t border-white/10">
       <a class="navlink {{ 'active' if request.blueprint=='attendance' }}" href="{{ url_for('attendance.index') }}">✅ Attendance</a>
@@ -87,6 +88,7 @@
       <a class="text-green-100 whitespace-nowrap" href="{{ url_for('services.insurance') }}">Insurance</a>
       <a class="text-green-100 whitespace-nowrap" href="{{ url_for('services.shop') }}">Shop</a>
       <a class="text-green-100 whitespace-nowrap" href="{{ url_for('comms.index') }}">News</a>
+      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('messaging.index') }}">Messaging</a>
       <a class="text-green-100 whitespace-nowrap" href="{{ url_for('governance.index') }}">Governance</a>
       <a class="text-green-100 whitespace-nowrap" href="{{ url_for('attendance.index') }}">Attendance</a>
       <a class="text-green-100 whitespace-nowrap" href="{{ url_for('visitors.index') }}">Visitors</a>

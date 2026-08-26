@@ -12,8 +12,10 @@ A full-stack web platform for **Uganda Cooperative Savings and Credit Union Limi
 6. Insurance (CIC Africa) — policy register and claims workflow
 7. Stationery Shop — branded accounting stationery, stock, ordering and fulfilment
 8. Announcements — circulars targeted to all SACCOs or by region (SMS gateway integration point)
-9. Governance — board/AGM meetings, agendas, minutes, resolutions with e-voting
-10. Admin — user management, full audit log
+9. Messaging — bulk SMS / WhatsApp / call broadcasts: group member numbers (All / region / custom pick with search filter), queue every recipient, process the queue, and track coverage (sent / pending / failed) per broadcast. Retry failed recipients after updating phone files
+10. Member search — JSON endpoint `GET /saccos/api/search?q=...` powering searchable member pickers on CFF deposits, loan applications and shop orders
+11. Governance — board/AGM meetings, agendas, minutes, resolutions with e-voting
+12. Admin — user management, full audit log
 
 ## Phase 2 Modules — Workplace hub
 
