@@ -7,7 +7,7 @@ from ..models import (db, User, Sacco, CffLoan, CffDeposit, CffInvestment, Finan
 bp = Blueprint("main", __name__)
 
 
-@bp.route("/")
+@bp.route("/dashboard")
 @login_required()
 def dashboard():
     pool_deposits = sum(d.amount for d in CffDeposit.query.all())

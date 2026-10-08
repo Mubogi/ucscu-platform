@@ -17,12 +17,17 @@ A full-stack web platform for **Uganda Cooperative Savings and Credit Union Limi
 
 ## Phase 2 Modules — Workplace hub
 
-1. Attendance — LAN-gated check-in/out (rejects non-office IPs), field exemption channel, lateness reason capture, leave/absence workflow, meeting attendance registers
-2. Visitors — reception register, numbered gate tags with printable passes, check-in/out
-3. Hub — internal social-media-style discussion spaces scoped by hierarchy (everyone / staff-only / board-only / SACCO leaders) with threaded replies
-4. Whistle — anonymous whistleblowing: no identity stored, token-based status check, case workflow for oversight
-5. Doc Space — minutes & documents library with templates (General/Board/AGM/Attendance register); HR & conduct policy summary page
-6. Calendar — shared view aggregating meetings, trainings, UMRA deadlines, and approved leave
+1. Home feed — a company social feed: post updates, headlines and photos, like, comment; scoped to everyone / staff / board
+2. Messages — private 1-to-1 chat with file and image attachments, plus unread notifications
+3. Calls — LAN audio/video calls between staff using peer-to-peer WebRTC (no internet required) with mute, camera toggle and screen-ready layout
+4. Notifications — live bell counter, toast popups and sound for new messages, comments, likes, calls and announcements
+5. Attendance — LAN-gated check-in/out (rejects non-office IPs), field exemption channel, lateness reason capture, leave/absence workflow, meeting attendance registers
+6. Visitors — reception register, numbered gate tags with printable passes, check-in/out
+7. Spaces (Hub) — internal social-media-style discussion spaces scoped by hierarchy (everyone / staff-only / board-only / SACCO leaders) with threaded replies
+8. Whistle — anonymous whistleblowing: no identity stored, token-based status check, case workflow for oversight
+9. Doc Space — minutes & documents library with templates (General/Board/AGM/Attendance register); HR & conduct policy summary page
+10. Calendar — shared view aggregating meetings, trainings, UMRA deadlines, and approved leave
+11. Bulk Messaging — grouped SMS / WhatsApp / Call queue with per-recipient coverage tracking
 
 ## Roles
 

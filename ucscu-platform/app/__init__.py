@@ -49,15 +49,23 @@ def create_app():
     from .routes.whistle import bp as whistle_bp
     from .routes.docs import bp as docs_bp
     from .routes.calendar import bp as calendar_bp
+    from .routes.social import bp as social_bp
+    from .routes.messaging import bp as messaging_bp
 
     for bp in (auth_bp, main_bp, saccos_bp, cff_bp, reports_bp,
                training_bp, services_bp, comms_bp, governance_bp,
-               attendance_bp, visitors_bp, hub_bp, whistle_bp, docs_bp, calendar_bp):
+               attendance_bp, visitors_bp, hub_bp, whistle_bp, docs_bp,
+               calendar_bp, social_bp, messaging_bp):
         app.register_blueprint(bp)
 
     @app.context_processor
     def inject_globals():
-        return {"me": current_user()}
+        u = current_user()
+        unread = 0
+        if u:
+            from .models import Notification
+            unread = Notification.query.filter_by(user_id=u.id, read=False).count()
+        return {"me": u, "unread_notifications": unread}
 
     @app.template_filter("ugx")
     def ugx(v):

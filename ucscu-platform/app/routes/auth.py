@@ -11,7 +11,7 @@ def login():
         if u and u.check_password(request.form["password"]):
             session["uid"] = u.id
             flash(f"Welcome back, {u.full_name}.", "ok")
-            return redirect(request.args.get("next") or url_for("main.dashboard"))
+            return redirect(request.args.get("next") or url_for("social.feed"))
         flash("Invalid username or password.", "error")
     return render_template("login.html")
 

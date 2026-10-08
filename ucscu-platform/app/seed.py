@@ -231,7 +231,7 @@ def seed():
 
 def _seed_phase2():
     """Workplace hub demo data — runs only if spaces don't exist yet."""
-    from .models import Space, Post, Visitor, Document
+    from .models import Space, Post, Visitor, Document, FeedPost
     if Space.query.count() == 0:
         s1 = Space(name="general", scope="all", description="Open to everyone — movement news and chat")
         s2 = Space(name="ucscu-staff", scope="staff_only", description="UCSCU staff and board only")
@@ -247,4 +247,12 @@ def _seed_phase2():
         db.session.add(Visitor(name="Samuel Okot", organization="KYAPS SACCO", phone="+256 701 112233",
                                tag_no="T-001", host_user_id=2, purpose="Dues payment & Q3 report submission",
                                expected=True, items="Laptop bag"))
+    if FeedPost.query.count() == 0:
+        db.session.add_all([
+            FeedPost(author_id=1, scope="all",
+                     body="Welcome to UCSCU Connect! The Home feed is where we share news, photos and "
+                          "headlines across the whole movement. Post an update or drop a photo below."),
+            FeedPost(author_id=3, scope="board_only",
+                     body="Reminder to board members: the Q3 board pack is in Doc Space ahead of the meeting."),
+        ])
     db.session.commit()

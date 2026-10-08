@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Home feed — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-5">
+  <div class="lg:col-span-2 space-y-4">
+    <!-- composer -->
+    <div class="card">
+      <form method="post" action="{{ url_for('social.create_post') }}" enctype="multipart/form-data">
+        <div class="flex gap-3">
+          <div class="avatar shrink-0" style="background:var(--brand)">{{ me.full_name[:1] }}</div>
+          <textarea class="input" name="body" rows="2" placeholder="Share an update, a headline or a photo with the team…"></textarea>
+        </div>
+        <div id="preview" class="hidden mt-3"><img class="rounded-xl max-h-72 border border-slate-200"></div>
+        <div class="flex items-center gap-2 mt-3 flex-wrap">
+          <label class="btn btn-ghost cursor-pointer">
+            📷 Photo / file
+            <input type="file" name="photo" id="photoInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" class="hidden">
+          </label>
+          <select class="input w-auto" name="scope">
+            <option value="all">Everyone</option>
+            <option value="staff_only">Staff &amp; board</option>
+            <option value="board_only">Board only</option>
+          </select>
+          <button class="btn btn-brand ml-auto">Post</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- posts -->
+    {% for p in posts %}
+    <div id="post-{{ p.id }}" class="card">
+      <div class="flex items-start gap-3">
+        <div class="avatar shrink-0" style="background:var(--brand)">{{ p.author.full_name[:1] }}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <b>{{ p.author.full_name }}</b>
+            <span class="text-xs text-slate-400 capitalize">{{ p.author.role }}</span>
+            <span class="text-xs text-slate-400">· {{ p.time_label }}</span>
+            {% if p.scope != 'all' %}<span class="badge b-info">{{ p.scope.replace('_',' ') }}</span>{% endif %}
+          </div>
+          {% if p.body %}<p class="mt-2 whitespace-pre-wrap">{{ p.body }}</p>{% endif %}
+          {% if p.attachment %}
+            {% if p.attachment.kind == 'image' %}
+              <a href="{{ p.attachment.url }}" target="_blank"><img src="{{ p.attachment.url }}" class="mt-3 rounded-xl max-h-[28rem] border border-slate-200"></a>
+            {% else %}
+              <a href="{{ p.attachment.url }}" target="_blank" class="mt-3 inline-flex items-center gap-2 chip">📄 {{ p.attachment.original_name }}</a>
+            {% endif %}
+          {% endif %}
+          <div class="flex items-center gap-4 mt-3 text-sm">
+            <form method="post" action="{{ url_for('social.like', pid=p.id) }}">
+              <button class="hover:underline {{ 'font-bold' if p.liked_by(me) }}" style="{{ 'color:var(--brand)' if p.liked_by(me) else 'color:#475569' }}">
+                👍 {{ p.likes|length }}
+              </button>
+            </form>
+            <span class="text-slate-400">💬 {{ p.comments|length }}</span>
+            {% if p.author_id == me.id or me.role == 'admin' %}
+            <form method="post" action="{{ url_for('social.delete_post', pid=p.id) }}" onsubmit="return confirm('Delete this post?')">
+              <button class="text-red-500 hover:underline">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+          {% for c in p.comments %}
+          <div class="mt-3 flex gap-2 bg-slate-50 rounded-xl p-2">
+            <div class="avatar shrink-0 text-xs" style="background:#94a3b8; width:1.8rem; height:1.8rem">{{ c.author.full_name[:1] }}</div>
+            <div class="text-sm"><b>{{ c.author.full_name }}</b> <span class="text-xs text-slate-400">{{ c.time_label }}</span><div>{{ c.body }}</div></div>
+          </div>
+          {% endfor %}
+          <form method="post" action="{{ url_for('social.comment', pid=p.id) }}" class="flex gap-2 mt-3">
+            <input class="input" name="body" placeholder="Write a comment…">
+            <button class="btn btn-ghost">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card text-center text-slate-400">No posts yet. Be the first to share something.</div>
+    {% endfor %}
+  </div>
+
+  <!-- right rail -->
+  <div class="space-y-4">
+    <div class="card">
+      <h3 class="font-bold mb-3">Quick actions</h3>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <a class="btn btn-ghost justify-center" href="{{ url_for('social.chat') }}">💬 Messages</a>
+        <a class="btn btn-ghost justify-center" href="{{ url_for('comms.index') }}">📢 News</a>
+        <a class="btn btn-ghost justify-center" href="{{ url_for('calendar.index') }}">📅 Calendar</a>
+        <a class="btn btn-ghost justify-center" href="{{ url_for('attendance.index') }}">✅ Attendance</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="font-bold mb-3">People</h3>
+      <div class="space-y-2">
+        {% for u in people %}
+        {% if u.id != me.id %}
+        <div class="flex items-center gap-2">
+          <div class="avatar text-xs" style="background:#94a3b8; width:2rem; height:2rem">{{ u.full_name[:1] }}</div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-medium truncate">{{ u.full_name }}</div>
+            <div class="text-xs text-slate-400 capitalize">{{ u.role }}{% if u.sacco %} · {{ u.sacco.name }}{% endif %}</div>
+          </div>
+          <a class="btn btn-ghost text-xs px-2 py-1" href="{{ url_for('social.chat_with', uid=u.id) }}">💬</a>
+          <a class="btn btn-ghost text-xs px-2 py-1" href="{{ url_for('social.call_start', uid=u.id) }}?kind=video" title="Video call (LAN)">📹</a>
+          <a class="btn btn-ghost text-xs px-2 py-1" href="{{ url_for('social.call_start', uid=u.id) }}?kind=audio" title="Voice call (LAN)">📞</a>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const photoInput = document.getElementById('photoInput');
+  if (photoInput) photoInput.addEventListener('change', () => {
+    const f = photoInput.files[0]; const pv = document.getElementById('preview');
+    if (!f || !f.type.startsWith('image/')) { pv.classList.add('hidden'); return; }
+    pv.querySelector('img').src = URL.createObjectURL(f); pv.classList.remove('hidden');
+  });
+</script>
+{% endblock %}
