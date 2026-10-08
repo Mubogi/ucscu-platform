@@ -14,6 +14,10 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="staff")
     sacco_id = db.Column(db.Integer, db.ForeignKey("sacco.id"), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    # active | pending | disabled — self-registered users start as "pending"
+    status = db.Column(db.String(20), nullable=False, default="active")
+    email = db.Column(db.String(120))
+    department = db.Column(db.String(120))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     sacco = db.relationship("Sacco", backref="users")
@@ -23,6 +27,34 @@ class User(db.Model):
 
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
+
+    @property
+    def is_active(self):
+        return self.status == "active"
+
+    @property
+    def is_pending(self):
+        return self.status == "pending"
+
+
+class Setting(db.Model):
+    """Simple key/value store for org + LAN configuration."""
+    key = db.Column(db.String(60), primary_key=True)
+    value = db.Column(db.Text)
+
+
+def get_setting(key, default=None):
+    s = Setting.query.get(key)
+    return s.value if s is not None else default
+
+
+def set_setting(key, value):
+    s = Setting.query.get(key)
+    if s is None:
+        s = Setting(key=key)
+        db.session.add(s)
+    s.value = value
+    return s
 
 
 class Sacco(db.Model):
@@ -612,9 +644,25 @@ class Document(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(60), default="Minutes")  # Minutes/Policy/Speech/Template
-    content = db.Column(db.Text)
+    content = db.Column(db.Text)                              # rich text (HTML) or plain text
+    content_type = db.Column(db.String(20), default="richtext")  # richtext | file | plain
+    attachment_id = db.Column(db.Integer, db.ForeignKey("attachment.id"))
     created_by = db.Column(db.String(80))
+    updated_at = db.Column(db.DateTime)
     at = db.Column(db.DateTime, default=datetime.utcnow)
+    attachment = db.relationship("Attachment", foreign_keys=[attachment_id])
+
+    @property
+    def is_file(self):
+        return self.attachment_id is not None
+
+    @property
+    def excerpt(self):
+        import re
+        if self.is_file:
+            return self.attachment.original_name if self.attachment else "file"
+        text = re.sub(r"<[^>]+>", " ", self.content or "")
+        return " ".join(text.split())[:120]
 
 
 MINUTE_TEMPLATES = {

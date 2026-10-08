@@ -9,6 +9,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 
 from .. import login_required, current_user
+from ..helpers import notify
 from ..models import (db, User, FeedPost, FeedComment, FeedLike, DirectThread,
                       DirectMessage, Attachment, Notification, CallSession, log_action)
 
@@ -19,12 +20,6 @@ MAX_UPLOAD = 20 * 1024 * 1024  # 20 MB
 
 
 # ---------------------------------------------------------------- helpers
-def notify(user_id, kind, text, link=None):
-    if user_id is None:
-        return
-    db.session.add(Notification(user_id=user_id, kind=kind, text=text, link=link))
-
-
 def upload_dir():
     d = os.path.join(current_app.instance_path, "uploads")
     os.makedirs(d, exist_ok=True)

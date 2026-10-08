@@ -15,6 +15,24 @@ A full-stack web platform for **Uganda Cooperative Savings and Credit Union Limi
 9. Governance — board/AGM meetings, agendas, minutes, resolutions with e-voting
 10. Admin — user management, full audit log
 
+## Running on the office LAN (Windows Server 2008 R2)
+
+The server binds to `0.0.0.0:12000`, so any device on the same network can reach it.
+
+1. Install Python 3.8 and run `pip install -r requirements.txt`.
+2. Start it with `start-server.bat`. On startup the console prints the LAN address
+   and an ASCII QR code — share that, or open **Administration → LAN Setup**.
+3. Run `install-autostart.bat` **as Administrator** once. It registers a Task
+   Scheduler job so the server starts automatically after the machine boots.
+4. Give the server a fixed IP (or a DHCP reservation) so the address never changes.
+
+**How staff connect:** join the office Wi-Fi/LAN, open the printed address in a
+browser, or scan the QR code. The landing page shows the address again. New staff
+tap "Create an account", and an administrator approves them under **Users**.
+
+The LAN Setup screen records the office network name and the CIDR range used to
+gate attendance check-in (only devices on that range can clock in).
+
 ## Phase 2 Modules — Workplace hub
 
 1. Home feed — a company social feed: post updates, headlines and photos, like, comment; scoped to everyone / staff / board

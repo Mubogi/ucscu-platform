@@ -1,6 +1,7 @@
 import os
 from functools import wraps
 from flask import Flask, session, redirect, url_for, request, render_template, flash, abort
+from sqlalchemy import inspect, text
 
 from .models import db, User
 
@@ -17,11 +18,52 @@ def login_required(*roles):
             u = current_user()
             if not u:
                 return redirect(url_for("auth.login", next=request.path))
+            if u.status != "active":
+                session.clear()
+                flash("Your account is not active. Please contact an administrator.", "error")
+                return redirect(url_for("auth.login"))
             if roles and u.role not in roles and u.role != "admin":
                 abort(403)
             return fn(*a, **kw)
         return wrapper
     return deco
+
+
+def _ensure_columns(app):
+    """Add columns that were introduced after a database was first created.
+
+    SQLite's create_all() never alters existing tables, so an installation made
+    before these fields existed would break without this."""
+    insp = inspect(db.engine)
+    existing_tables = set(insp.get_table_names())
+    for model in db.Model.__subclasses__():
+        table = model.__tablename__
+        if table not in existing_tables:
+            continue
+        have = {c["name"] for c in insp.get_columns(table)}
+        for col in model.__table__.columns:
+            if col.name in have:
+                continue
+            ddl = 'ALTER TABLE "%s" ADD COLUMN "%s" %s' % (
+                table, col.name, col.type.compile(db.engine.dialect))
+            default = None
+            if col.default is not None and getattr(col.default, "arg", None) is not None \
+                    and not callable(col.default.arg):
+                default = col.default.arg
+            elif col.name == "status":
+                default = "active"
+            try:
+                with db.engine.begin() as conn:
+                    if default is not None:
+                        if isinstance(default, (int, float)):
+                            conn.execute(text(ddl + " DEFAULT %s" % default))
+                        else:
+                            conn.execute(text(ddl + " DEFAULT '%s'" % default))
+                    else:
+                        conn.execute(text(ddl))
+                app.logger.info("Migrated: added %s.%s", table, col.name)
+            except Exception as e:  # pragma: no cover - best effort
+                app.logger.warning("Could not add %s.%s: %s", table, col.name, e)
 
 
 def create_app():
@@ -62,10 +104,13 @@ def create_app():
     def inject_globals():
         u = current_user()
         unread = 0
+        pending = 0
         if u:
             from .models import Notification
             unread = Notification.query.filter_by(user_id=u.id, read=False).count()
-        return {"me": u, "unread_notifications": unread}
+            if u.role == "admin":
+                pending = User.query.filter_by(status="pending").count()
+        return {"me": u, "unread_notifications": unread, "pending_users": pending}
 
     @app.template_filter("ugx")
     def ugx(v):
@@ -80,6 +125,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _ensure_columns(app)
         if not User.query.first():
             from .seed import seed
             seed()

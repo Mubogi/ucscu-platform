@@ -80,8 +80,10 @@
       <a class="navlink {{ 'active' if request.blueprint=='docs' }}" href="{{ url_for('docs.index') }}"><span>📄</span> Doc Space</a>
       {% if me.role == 'admin' %}
       <div class="navgroup-title">Administration</div>
-      <a class="navlink" href="{{ url_for('main.users') }}"><span>👥</span> Users</a>
-      <a class="navlink" href="{{ url_for('main.audit') }}"><span>🧾</span> Audit Log</a>
+      <a class="navlink {{ 'active' if request.endpoint=='main.users' }}" href="{{ url_for('main.users') }}"><span>👥</span> Users
+        {% if pending_users %}<span class="ml-auto badge b-warn">{{ pending_users }}</span>{% endif %}</a>
+      <a class="navlink {{ 'active' if request.endpoint=='main.setup' }}" href="{{ url_for('main.setup') }}"><span>🌐</span> LAN Setup</a>
+      <a class="navlink {{ 'active' if request.endpoint=='main.audit' }}" href="{{ url_for('main.audit') }}"><span>🧾</span> Audit Log</a>
       {% endif %}
     </nav>
     <div class="p-3 border-t border-slate-100">
@@ -106,7 +108,7 @@
       </div>
       <div class="ml-auto flex items-center gap-2">
         <a href="{{ url_for('social.notifications') }}" class="relative p-2 rounded-lg hover:bg-slate-100" title="Notifications">
-          🔔{% if unread_notifications %}<span class="absolute -top-0.5 -right-0.5 badge b-danger">{{ unread_notifications }}</span>{% endif %}
+          🔔<span data-bell-count class="absolute -top-0.5 -right-0.5 badge b-danger {{ '' if unread_notifications else 'hidden' }}">{{ unread_notifications }}</span>
         </a>
         <a href="{{ url_for('social.chat') }}" class="btn btn-ghost">💬 <span class="hidden sm:inline">Messages</span></a>
         <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost md:hidden">Sign out</a>
@@ -149,7 +151,11 @@
       const r = await fetch("{{ url_for('social.api_notifications') }}");
       if (!r.ok) return;
       const d = await r.json();
-      const bell = document.querySelectorAll('[data-bell]');
+      const count = document.querySelectorAll('[data-bell-count]');
+      count.forEach(el => {
+        el.textContent = d.unread;
+        el.classList.toggle('hidden', !d.unread);
+      });
       d.items.forEach(n => {
         if (__primed && !__seen.has(n.id)) showToast(n);
         __seen.add(n.id);
@@ -166,6 +172,12 @@
     a.innerHTML = '<div class="flex gap-2"><span>' + (icons[n.kind]||'🔔') + '</span><div><div>' + n.text + '</div><div class="text-xs text-slate-400">' + n.at + '</div></div></div>';
     host.appendChild(a);
     try { beep(n.kind); } catch(e) {}
+    try {
+      if (window.Notification && Notification.permission === 'granted') {
+        const desk = new Notification('UCSCU Connect', { body: n.text, tag: n.id });
+        desk.onclick = () => { window.focus(); window.location.href = n.link || '/'; };
+      }
+    } catch (e) {}
     setTimeout(() => a.remove(), 7000);
   }
   function beep(kind) {
