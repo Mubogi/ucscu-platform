@@ -93,11 +93,12 @@ def create_app():
     from .routes.calendar import bp as calendar_bp
     from .routes.social import bp as social_bp
     from .routes.messaging import bp as messaging_bp
+    from .routes.meetings import bp as meetings_bp
 
     for bp in (auth_bp, main_bp, saccos_bp, cff_bp, reports_bp,
                training_bp, services_bp, comms_bp, governance_bp,
                attendance_bp, visitors_bp, hub_bp, whistle_bp, docs_bp,
-               calendar_bp, social_bp, messaging_bp):
+               calendar_bp, social_bp, messaging_bp, meetings_bp):
         app.register_blueprint(bp)
 
     @app.context_processor
@@ -122,6 +123,15 @@ def create_app():
     @app.errorhandler(403)
     def forbidden(e):
         return render_template("403.html"), 403
+
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template("404.html"), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        db.session.rollback()
+        return render_template("500.html"), 500
 
     with app.app_context():
         db.create_all()

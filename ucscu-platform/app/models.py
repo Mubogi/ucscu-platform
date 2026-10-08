@@ -18,6 +18,7 @@ class User(db.Model):
     status = db.Column(db.String(20), nullable=False, default="active")
     email = db.Column(db.String(120))
     department = db.Column(db.String(120))
+    phone = db.Column(db.String(40))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     sacco = db.relationship("Sacco", backref="users")
@@ -627,6 +628,50 @@ class CallSession(db.Model):
     ended_at = db.Column(db.DateTime)
     caller = db.relationship("User", foreign_keys=[caller_id])
     callee = db.relationship("User", foreign_keys=[callee_id])
+
+
+class MeetingRoom(db.Model):
+    """A multi-person LAN meeting room. Peers form a full mesh and exchange
+    WebRTC offers through GroupSignal rows, so no internet is required."""
+    id = db.Column(db.Integer, primary_key=True)
+    room = db.Column(db.String(60), unique=True, nullable=False)
+    title = db.Column(db.String(160), default="Meeting")
+    kind = db.Column(db.String(10), default="video")        # audio / video
+    host_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    status = db.Column(db.String(20), default="open")       # open / ended
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ended_at = db.Column(db.DateTime)
+    host = db.relationship("User", foreign_keys=[host_id])
+
+    @property
+    def active_members(self):
+        return [p for p in self.participants if p.left_at is None]
+
+
+class MeetingParticipant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("meeting_room.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    left_at = db.Column(db.DateTime)
+    user = db.relationship("User", foreign_keys=[user_id])
+    room = db.relationship("MeetingRoom", backref="participants")
+
+    __table_args__ = (db.UniqueConstraint("room_id", "user_id", name="uq_room_user"),)
+
+
+class GroupSignal(db.Model):
+    """One WebRTC handshake between two people in a meeting room."""
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("meeting_room.id"), nullable=False)
+    from_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    to_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    offer = db.Column(db.Text)
+    answer = db.Column(db.Text)
+    from_ice = db.Column(db.Text, default="[]")   # JSON array
+    to_ice = db.Column(db.Text, default="[]")     # JSON array
+
+    __table_args__ = (db.UniqueConstraint("room_id", "from_id", "to_id", name="uq_room_pair"),)
 
 
 class ConfidentialReport(db.Model):

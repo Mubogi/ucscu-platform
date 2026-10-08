@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ room.title }} — Meeting{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto">
+  <div class="flex items-center gap-3 mb-3">
+    <div>
+      <h1 class="text-xl font-bold">{{ room.title }}</h1>
+      <div id="statusLine" class="text-sm text-slate-500">Joining…</div>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <span class="chip">{{ 'Video' if room.kind == 'video' else 'Voice' }} · LAN</span>
+      <span class="chip" id="countChip">1 in room</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="grid" class="grid gap-3" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      <!-- tiles injected here -->
+    </div>
+
+    <div class="flex items-center justify-center gap-2 mt-4 flex-wrap">
+      <button id="muteBtn" class="btn btn-ghost">🎙️ Mute</button>
+      <button id="camBtn" class="btn btn-ghost {{ 'hidden' if room.kind != 'video' }}">📷 Camera</button>
+      <button id="shareBtn" class="btn btn-ghost">🖥️ Share screen</button>
+      <a href="{{ url_for('social.chat') }}" class="btn btn-ghost">💬 Chat</a>
+      {% if me.id == room.host_id or me.role == 'admin' %}
+      <form method="post" action="{{ url_for('meetings.end', room=room.room) }}">
+        <button class="btn btn-danger">End for everyone</button>
+      </form>
+      {% endif %}
+      <button id="leaveBtn" class="btn btn-danger">Leave</button>
+    </div>
+    <p class="text-xs text-slate-400 mt-3">
+      Everyone connects directly to everyone else on the office LAN. No internet is used.
+      Copy the page address to invite someone else.
+    </p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const ROOM = "{{ room.room }}";
+const MY_ID = {{ me.id }};
+const KIND = "{{ room.kind }}";
+const API = "/meetings/api/" + ROOM;
+const iceCfg = { iceServers: [] };   // LAN only — host candidates are enough
+
+let localStream = null;
+const peers = {};        // peerId -> { pc, stream, tile, el, offerer, appliedAnswer, seenIce, seenOffer }
+const grid = document.getElementById('grid');
+const statusLine = document.getElementById('statusLine');
+
+async function getMedia() {
+  if (localStream) return localStream;
+  localStream = await navigator.mediaDevices.getUserMedia(
+    {{ '{video:true, audio:true}' if room.kind == 'video' else '{video:false, audio:true}' }});
+  return localStream;
+}
+
+function addTile(id, name, opts = {}) {
+  if (peers[id]?.tile) return peers[id].tile;
+  const wrap = document.createElement('div');
+  wrap.className = 'relative bg-slate-900 rounded-2xl overflow-hidden';
+  wrap.style.aspectRatio = '16/9';
+  const v = document.createElement('video');
+  v.autoplay = true; v.playsInline = true;
+  v.className = 'w-full h-full object-cover';
+  if (opts.muted) v.muted = true;
+  wrap.appendChild(v);
+  const label = document.createElement('div');
+  label.className = 'absolute bottom-2 left-2 text-xs text-white bg-black/50 rounded px-2 py-0.5';
+  label.textContent = name + (opts.host ? ' (host)' : '') + (opts.me ? ' · you' : '');
+  wrap.appendChild(label);
+  grid.appendChild(wrap);
+  if (!peers[id]) peers[id] = {};
+  peers[id].tile = wrap;
+  peers[id].el = v;
+  return wrap;
+}
+
+function removeTile(id) {
+  if (peers[id]?.tile) { peers[id].tile.remove(); peers[id].el.srcObject = null; }
+  if (peers[id]?.pc) { try { peers[id].pc.close(); } catch(e){} }
+  delete peers[id];
+  refreshCount();
+}
+
+function refreshCount() {
+  const n = 1 + Object.keys(peers).length;
+  document.getElementById('countChip').textContent = n + ' in room';
+}
+
+async function makePc(peerId, offerer) {
+  const pc = new RTCPeerConnection(iceCfg);
+  const stream = new MediaStream();
+  const state = peers[peerId] || (peers[peerId] = {});
+  state.pc = pc; state.stream = stream; state.offerer = offerer;
+  state.seenIce = 0; state.appliedAnswer = false; state.seenOffer = false;
+
+  (await getMedia()).getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.ontrack = e => {
+    e.streams[0].getTracks().forEach(t => stream.addTrack(t));
+    const el = peers[peerId].el || addTile(peerId, 'Guest').querySelector('video');
+    el.srcObject = stream;
+  };
+  pc.onicecandidate = e => { if (e.candidate) post({ peer: peerId, action: 'ice', ice: e.candidate }); };
+  return pc;
+}
+
+async function post(obj) {
+  await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(obj) });
+}
+async function getState() { const r = await fetch(API); return r.json(); }
+
+async function members() {
+  const r = await fetch(API.replace('/signal', '/members'));
+  return r.json();
+}
+
+let appliedEnded = false;
+async function tick() {
+  let st;
+  try { st = await getState(); } catch (e) { setTimeout(tick, 2000); return; }
+
+  if (st.status === 'ended') {
+    if (!appliedEnded) { appliedEnded = true; statusLine.textContent = 'The host ended this meeting'; setTimeout(leave, 1200); }
+    return;
+  }
+
+  // members list drives which peers should exist
+  const m = await members();
+  const others = m.members.filter(x => x.id !== MY_ID);
+  statusLine.textContent = 'Connected to ' + others.length + ' other' + (others.length === 1 ? '' : 's');
+
+  for (const o of others) {
+    const exists = peers[o.id]?.pc;
+    if (!exists) {
+      // Lower id dials, higher id answers — avoids double offers
+      if (MY_ID < o.id) {
+        addTile(o.id, o.name, { host: o.host });
+        const pc = await makePc(o.id, true);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await post({ peer: o.id, action: 'offer', offer });
+      } else {
+        addTile(o.id, o.name, { host: o.host });
+      }
+    } else if (peers[o.id].tile) {
+      const label = peers[o.id].tile.querySelector('div:last-child');
+      if (label) label.textContent = o.name + (o.host ? ' (host)' : '');
+    }
+  }
+  // remove tiles for people who left
+  for (const id of Object.keys(peers)) {
+    if (!others.some(x => String(x.id) === String(id))) removeTile(id);
+  }
+
+  // apply incoming signals
+  for (const s of st.signals) {
+    const pid = s.peer;
+    let st2 = peers[pid];
+    if (!st2) { addTile(pid, 'Guest'); st2 = peers[pid]; }
+
+    if (s.offer && !st2.seenOffer && !st2.pc) {
+      st2.seenOffer = true;
+      const pc = await makePc(pid, false);
+      await pc.setRemoteDescription(new RTCSessionDescription(s.offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await post({ peer: pid, action: 'answer', answer });
+    } else if (s.offer && st2.pc && !st2.pc.remoteDescription) {
+      await st2.pc.setRemoteDescription(new RTCSessionDescription(s.offer));
+    }
+
+    if (st2.offerer && s.answer && !st2.appliedAnswer) {
+      st2.appliedAnswer = true;
+      await st2.pc.setRemoteDescription(new RTCSessionDescription(s.answer));
+    }
+
+    if (st2.pc) {
+      for (let i = st2.seenIce; i < s.peer_ice.length; i++) {
+        try { await st2.pc.addIceCandidate(new RTCIceCandidate(s.peer_ice[i])); } catch (e) {}
+      }
+      st2.seenIce = s.peer_ice.length;
+    }
+  }
+
+  setTimeout(tick, 1800);
+}
+
+document.getElementById('muteBtn').onclick = (e) => {
+  if (!localStream) return;
+  const t = localStream.getAudioTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled;
+  e.target.textContent = t.enabled ? '🎙️ Mute' : '🔇 Unmute';
+};
+const camBtn = document.getElementById('camBtn');
+if (camBtn) camBtn.onclick = (e) => {
+  if (!localStream) return;
+  const t = localStream.getVideoTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled;
+  e.target.textContent = t.enabled ? '📷 Camera' : '🚫 Camera off';
+};
+let sharing = false;
+document.getElementById('shareBtn').onclick = async (e) => {
+  if (!sharing) {
+    try {
+      const disp = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const track = disp.getVideoTracks()[0];
+      for (const id in peers) {
+        const sender = peers[id].pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) sender.replaceTrack(track);
+      }
+      addTile('me', 'Your screen', { me: true, muted: true }).querySelector('video').srcObject = disp;
+      track.onended = () => document.getElementById('shareBtn').click();
+      sharing = true; e.target.textContent = '⏹️ Stop sharing';
+    } catch (err) {}
+  } else {
+    removeTile('me');
+    sharing = false; e.target.textContent = '🖥️ Share screen';
+  }
+};
+document.getElementById('leaveBtn').onclick = leave;
+
+function leave() {
+  fetch(API.replace('/signal', '/leave'), { method: 'POST' }).finally(() => {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    for (const id in peers) { try { peers[id].pc.close(); } catch (e) {} }
+    window.location.href = "{{ url_for('meetings.index') }}";
+  });
+}
+
+(async () => {
+  await getMedia().catch(() => {});
+  addTile('local', '{{ me.full_name }}', { me: true, muted: true }).querySelector('video').srcObject = localStream;
+  statusLine.textContent = 'Joining…';
+  tick();
+})();
+</script>
+{% endblock %}

@@ -1,7 +1,8 @@
 from datetime import datetime, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from .. import login_required, current_user
-from ..models import db, Sacco, Course, Lesson, TrainingEvent, TrainingRegistration, log_action
+from ..helpers import notify
+from ..models import db, User, Sacco, Course, Lesson, TrainingEvent, TrainingRegistration, log_action
 
 bp = Blueprint("training", __name__, url_prefix="/training")
 
@@ -54,8 +55,16 @@ def new_event():
                       ends_on=datetime.strptime(f["ends_on"], "%Y-%m-%d").date() if f.get("ends_on") else None,
                       capacity=int(f.get("capacity") or 40), fee=int(f.get("fee") or 0))
     db.session.add(e)
+    db.session.flush()
+    me = current_user()
+    for u in User.query.filter_by(status="active").all():
+        if u.id != me.id:
+            notify(u.id, "post",
+                   "New training event: %s on %s" % (e.course.title, e.starts_on.strftime("%d %b")),
+                   url_for("training.index"))
+    log_action(me.username, "Scheduled training event for course %s" % e.course_id)
     db.session.commit()
-    flash("Training event scheduled.", "ok")
+    flash("Training event scheduled. Staff have been notified.", "ok")
     return redirect(url_for("training.index"))
 
 

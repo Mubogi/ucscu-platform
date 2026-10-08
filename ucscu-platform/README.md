@@ -33,6 +33,34 @@ tap "Create an account", and an administrator approves them under **Users**.
 The LAN Setup screen records the office network name and the CIDR range used to
 gate attendance check-in (only devices on that range can clock in).
 
+## Integrations (all optional, all on the LAN)
+
+Set these on the **LAN Setup** screen (Administration → LAN Setup):
+
+- **Kyocera / network printing** — printer IP + raw port (default 9100). Use
+  "Send a test page to the printer" to confirm it works. The server talks straight
+  to the printer's raw socket, so no drivers are needed on the server.
+- **Email (SMTP)** — host, port, username, password, from address and STARTTLS.
+  Used for server-sent mail. Leave blank to keep everything on the LAN.
+
+Without these configured the app still runs; it just reports that they are not set.
+
+## Suggested features still to add (roadmap)
+
+These are not built yet — useful next steps, roughly in priority order:
+
+1. **Backups** — a scheduled copy of `instance/ucscu.db` and `instance/uploads`
+   to a second disk or a network share. High priority for a server kept in a locked room.
+2. **Automatic file retention** — purge old uploads after a set period, with an audit trail.
+3. **Rich text in announcements and chat** — Doc Space has formatting; Announcements
+   and Messages are still plain text.
+4. **Search** — a single search box across documents, people, posts and announcements.
+5. **SACCO member self-service portal** — let member SACCOs log in to see their own
+   PEARLS status and dues only.
+6. **Reporting exports** — PDF/Excel exports beyond the CSV that PEARLS already offers.
+7. **Two-factor sign-in** — optional TOTP for admin accounts.
+8. **Multi-language** — Luganda alongside English for member-facing screens.
+
 ## Phase 2 Modules — Workplace hub
 
 1. Home feed — a company social feed: post updates, headlines and photos, like, comment; scoped to everyone / staff / board

@@ -56,6 +56,7 @@
       <div class="navgroup-title">Workspace</div>
       <a class="navlink {{ 'active' if request.endpoint=='social.feed' }}" href="{{ url_for('social.feed') }}"><span>🏠</span> Home</a>
       <a class="navlink {{ 'active' if request.endpoint in ('social.chat','social.chat_with') }}" href="{{ url_for('social.chat') }}"><span>💬</span> Messages</a>
+      <a class="navlink {{ 'active' if request.blueprint=='meetings' }}" href="{{ url_for('meetings.index') }}"><span>📹</span> Meetings</a>
       <a class="navlink {{ 'active' if request.blueprint=='hub' }}" href="{{ url_for('hub.index') }}"><span>🗣️</span> Spaces</a>
       <a class="navlink {{ 'active' if request.blueprint=='comms' }}" href="{{ url_for('comms.index') }}"><span>📢</span> Announcements</a>
       <a class="navlink {{ 'active' if request.endpoint=='social.notifications' }}" href="{{ url_for('social.notifications') }}"><span>🔔</span> Notifications
@@ -87,14 +88,17 @@
       {% endif %}
     </nav>
     <div class="p-3 border-t border-slate-100">
-      <div class="flex items-center gap-2">
+      <a href="{{ url_for('auth.profile') }}" class="flex items-center gap-2 hover:bg-slate-50 rounded-lg p-1 -m-1" title="My profile">
         <div class="avatar text-sm" style="background:var(--brand)">{{ me.full_name[:1] }}</div>
         <div class="min-w-0">
           <div class="font-semibold text-sm truncate">{{ me.full_name }}</div>
           <div class="text-xs text-slate-400 capitalize">{{ me.role }}{% if me.sacco %} — {{ me.sacco.name }}{% endif %}</div>
         </div>
+      </a>
+      <div class="flex gap-2 mt-3">
+        <a href="{{ url_for('auth.profile') }}" class="btn btn-ghost flex-1 justify-center">Profile</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost flex-1 justify-center">Sign out</a>
       </div>
-      <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost w-full mt-3 justify-center">Sign out</a>
     </div>
   </aside>
 
@@ -110,6 +114,7 @@
         <a href="{{ url_for('social.notifications') }}" class="relative p-2 rounded-lg hover:bg-slate-100" title="Notifications">
           🔔<span data-bell-count class="absolute -top-0.5 -right-0.5 badge b-danger {{ '' if unread_notifications else 'hidden' }}">{{ unread_notifications }}</span>
         </a>
+        <a href="{{ url_for('meetings.index') }}" class="btn btn-ghost">📹 <span class="hidden sm:inline">Meet</span></a>
         <a href="{{ url_for('social.chat') }}" class="btn btn-ghost">💬 <span class="hidden sm:inline">Messages</span></a>
         <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost md:hidden">Sign out</a>
       </div>
@@ -118,6 +123,7 @@
     <nav class="md:hidden bg-white border-b border-slate-200 px-3 py-2 flex gap-2 overflow-x-auto text-xs sticky top-[57px] z-10">
       <a class="chip" href="{{ url_for('social.feed') }}">Home</a>
       <a class="chip" href="{{ url_for('social.chat') }}">Messages</a>
+      <a class="chip" href="{{ url_for('meetings.index') }}">Meetings</a>
       <a class="chip" href="{{ url_for('hub.index') }}">Spaces</a>
       <a class="chip" href="{{ url_for('comms.index') }}">News</a>
       <a class="chip" href="{{ url_for('calendar.index') }}">Calendar</a>
@@ -128,6 +134,16 @@
       <a class="chip" href="{{ url_for('attendance.index') }}">Attendance</a>
       <a class="chip" href="{{ url_for('visitors.index') }}">Visitors</a>
       <a class="chip" href="{{ url_for('docs.index') }}">Docs</a>
+      <a class="chip" href="{{ url_for('whistle.index') }}">Whistle</a>
+      <a class="chip" href="{{ url_for('governance.index') }}">Governance</a>
+      <a class="chip" href="{{ url_for('training.index') }}">Training</a>
+      <a class="chip" href="{{ url_for('messaging.index') }}">Bulk SMS</a>
+      <a class="chip" href="{{ url_for('auth.profile') }}">Profile</a>
+      {% if me.role == 'admin' %}
+      <a class="chip" href="{{ url_for('main.users') }}">Users{% if pending_users %} ({{ pending_users }}){% endif %}</a>
+      <a class="chip" href="{{ url_for('main.setup') }}">LAN Setup</a>
+      <a class="chip" href="{{ url_for('main.audit') }}">Audit</a>
+      {% endif %}
     </nav>
 
     <div class="p-4 md:p-6 max-w-7xl mx-auto">
@@ -165,7 +181,8 @@
   }
   function showToast(n) {
     const host = document.getElementById('toastHost');
-    const icons = { message:'💬', comment:'💭', like:'👍', call:'📞', post:'📝', announcement:'📢' };
+    const icons = { message:'💬', comment:'💭', like:'👍', call:'📞', post:'📝',
+                    announcement:'📢', approval:'👥' };
     const a = document.createElement('a');
     a.href = n.link || '#';
     a.className = 'pop block bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-sm hover:shadow-xl';

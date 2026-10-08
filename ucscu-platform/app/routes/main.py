@@ -2,13 +2,14 @@
 import ipaddress
 import os
 import socket
-from datetime import date
+from datetime import date, datetime
 
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, jsonify, current_app)
 
 from .. import login_required, current_user
 from ..helpers import notify
+from ..integrations import email_configured, printer_configured
 from ..models import (db, User, Sacco, CffLoan, CffDeposit, CffInvestment, FinancialReport,
                       ComplianceDeadline, TrainingEvent, StationeryOrder, AuditLog, ROLES,
                       Setting, get_setting, set_setting, log_action)
@@ -152,7 +153,11 @@ def audit():
 @login_required("admin")
 def setup():
     if request.method == "POST":
-        for key in ("org_name", "lan_name", "office_cidr", "server_host", "printer_host", "printer_port"):
+        keys = ("org_name", "lan_name", "office_cidr", "server_host",
+                "printer_host", "printer_port",
+                "smtp_host", "smtp_port", "smtp_user", "smtp_password",
+                "smtp_from", "smtp_tls")
+        for key in keys:
             if key in request.form:
                 set_setting(key, request.form.get(key, "").strip())
         set_setting("setup_done", "1")
@@ -173,10 +178,31 @@ def setup():
         "server_host": host,
         "printer_host": get_setting("printer_host", ""),
         "printer_port": get_setting("printer_port", "9100"),
+        "smtp_host": get_setting("smtp_host", ""),
+        "smtp_port": get_setting("smtp_port", "25"),
+        "smtp_user": get_setting("smtp_user", ""),
+        "smtp_password": get_setting("smtp_password", ""),
+        "smtp_from": get_setting("smtp_from", ""),
+        "smtp_tls": get_setting("smtp_tls", "0"),
         "setup_done": get_setting("setup_done", "0"),
     }
     return render_template("setup.html", cfg=cfg, ips=ips, port=port,
-                           links=links, join_url=join_url, qr_svg=_qr_svg(join_url))
+                           links=links, join_url=join_url, qr_svg=_qr_svg(join_url),
+                           printer_ok=printer_configured(), email_ok=email_configured())
+
+
+@bp.route("/setup/test-printer", methods=["POST"])
+@login_required("admin")
+def test_printer():
+    from ..integrations import print_raw
+    ok, msg = print_raw(
+        "UCSCU Connect test page\nIf you can read this, LAN printing works.\n"
+        "Server time: %s" % datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        title="UCSCU Connect")
+    log_action(current_user().username, "Test print: %s" % msg)
+    db.session.commit()
+    flash(msg, "ok" if ok else "error")
+    return redirect(url_for("main.setup"))
 
 
 @bp.route("/setup/qr.svg")

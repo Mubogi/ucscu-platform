@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Meetings — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="flex items-center gap-3 mb-4">
+  <div>
+    <h1 class="text-2xl font-bold">Meetings</h1>
+    <p class="text-sm text-slate-500">Multi-person audio and video calls over the office LAN</p>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="card">
+      <h2 class="font-bold mb-3">Live rooms</h2>
+      {% if open_rooms %}
+      <div class="space-y-2">
+        {% for r in open_rooms %}
+        <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-200">
+          <div class="avatar" style="background:var(--brand)">{{ r.title[:1]|upper }}</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate">{{ r.title }}</div>
+            <div class="text-xs text-slate-400">
+              Hosted by {{ r.host.full_name }} · {{ r.active_members|length }} in room ·
+              {{ 'Video' if r.kind == 'video' else 'Voice' }}
+            </div>
+          </div>
+          <a href="{{ url_for('meetings.room', room=r.room) }}" class="btn btn-brand ml-auto">Join</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-400">No live meetings right now. Start one on the right.</p>
+      {% endif %}
+    </div>
+
+    {% if recent %}
+    <div class="card">
+      <h2 class="font-bold mb-3">Recent</h2>
+      <table class="tbl">
+        <tr><th>Meeting</th><th>Host</th><th>Ended</th></tr>
+        {% for r in recent %}
+        <tr><td>{{ r.title }}</td><td>{{ r.host.full_name }}</td>
+            <td class="text-slate-400">{{ r.ended_at.strftime('%d %b %H:%M') if r.ended_at }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 class="font-bold mb-3">Start a meeting</h2>
+    <form method="post" action="{{ url_for('meetings.create') }}" class="space-y-3">
+      <div>
+        <label class="lbl">Title</label>
+        <input class="input" name="title" placeholder="e.g. Finance standup" required>
+      </div>
+      <div>
+        <label class="lbl">Type</label>
+        <select class="input" name="kind">
+          <option value="video">Video</option>
+          <option value="audio">Voice only</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Invite (optional)</label>
+        <div class="border border-slate-200 rounded-xl max-h-44 overflow-y-auto p-2 space-y-1">
+          {% for u in people %}
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="invite" value="{{ u.id }}">
+            <span>{{ u.full_name }} <span class="text-slate-400 text-xs">{{ u.role }}</span></span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Tick who to invite. You can also just share the room link.</p>
+      </div>
+      <button class="btn btn-brand w-full justify-center">Start meeting</button>
+    </form>
+    <p class="text-xs text-slate-400 mt-3">
+      Meetings run peer-to-peer on the LAN — no internet needed. Works best with
+      up to about 4–5 people per room.
+    </p>
+  </div>
+</div>
+{% endblock %}

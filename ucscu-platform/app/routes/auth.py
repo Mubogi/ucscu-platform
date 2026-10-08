@@ -2,6 +2,7 @@
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    session, flash)
 
+from .. import login_required
 from ..models import db, User, get_setting, log_action
 from ..helpers import notify
 
@@ -66,6 +67,37 @@ def register():
             db.session.commit()
             return render_template("register_pending.html", full_name=full_name)
     return render_template("register.html")
+
+
+@bp.route("/profile", methods=["GET", "POST"])
+@login_required()
+def profile():
+    from .. import current_user
+    me = current_user()
+    if request.method == "POST":
+        f = request.form
+        me.full_name = (f.get("full_name") or me.full_name).strip()
+        me.email = (f.get("email") or "").strip()
+        me.department = (f.get("department") or "").strip()
+        me.phone = (f.get("phone") or "").strip()
+        current = f.get("current_password") or ""
+        new = f.get("new_password") or ""
+        if new:
+            if not me.check_password(current):
+                flash("Current password is incorrect.", "error")
+                return redirect(url_for("auth.profile"))
+            if len(new) < 6:
+                flash("New password must be at least 6 characters.", "error")
+                return redirect(url_for("auth.profile"))
+            me.set_password(new)
+            log_action(me.username, "Changed own password")
+            flash("Password changed.", "ok")
+        else:
+            log_action(me.username, "Updated own profile")
+            flash("Profile updated.", "ok")
+        db.session.commit()
+        return redirect(url_for("auth.profile"))
+    return render_template("profile.html", me=me)
 
 
 @bp.route("/logout")

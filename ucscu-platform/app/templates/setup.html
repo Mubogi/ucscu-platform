@@ -71,11 +71,58 @@
         <label class="lbl">Printer raw port</label>
         <input class="input" name="printer_port" value="{{ cfg.printer_port }}" placeholder="9100">
       </div>
+
+      <details class="rounded-xl bg-slate-50 p-3" {{ 'open' if cfg.smtp_host }}>
+        <summary class="cursor-pointer text-sm font-semibold">Email (optional)</summary>
+        <p class="text-xs text-slate-500 my-2">
+          Only needed if you want the server to send mail (for example announcement
+          copies). Leave blank to keep everything on the LAN.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="lbl">Mail server (SMTP host)</label>
+            <input class="input" name="smtp_host" value="{{ cfg.smtp_host }}" placeholder="mail.ucscu.co.ug">
+          </div>
+          <div>
+            <label class="lbl">SMTP port</label>
+            <input class="input" name="smtp_port" value="{{ cfg.smtp_port }}" placeholder="25">
+          </div>
+          <div>
+            <label class="lbl">Username</label>
+            <input class="input" name="smtp_user" value="{{ cfg.smtp_user }}">
+          </div>
+          <div>
+            <label class="lbl">Password</label>
+            <input class="input" type="password" name="smtp_password" value="{{ cfg.smtp_password }}">
+          </div>
+          <div>
+            <label class="lbl">From address</label>
+            <input class="input" name="smtp_from" value="{{ cfg.smtp_from }}" placeholder="no-reply@ucscu.co.ug">
+          </div>
+          <div class="flex items-end">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="smtp_tls" value="1" {{ 'checked' if cfg.smtp_tls == '1' }}>
+              Use STARTTLS
+            </label>
+          </div>
+        </div>
+      </details>
+
       <button class="btn btn-brand w-full justify-center">Save setup</button>
     </form>
 
+    <form method="post" action="{{ url_for('main.test_printer') }}" class="mt-2">
+      <button class="btn btn-ghost w-full justify-center" {{ '' if printer_ok else 'disabled' }}>
+        🖨️ Send a test page to the printer
+      </button>
+      {% if not printer_ok %}
+        <p class="text-xs text-slate-400 mt-1 text-center">Save a printer IP first.</p>
+      {% endif %}
+    </form>
+
     <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-1">
-      <p><b>Auto-start:</b> the server should be registered as a Windows service so it starts after the server boots. See the README.</p>
+      <p><b>Status:</b> printer {{ 'configured' if printer_ok else 'not configured' }} · email {{ 'configured' if email_ok else 'not configured' }}</p>
+      <p><b>Auto-start:</b> run <code>install-autostart.bat</code> as Administrator once, and the server starts after every boot.</p>
       <p><b>Tip:</b> give this server a fixed IP (or DHCP reservation) so the address above never changes.</p>
     </div>
   </div>

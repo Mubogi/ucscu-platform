@@ -64,6 +64,9 @@ def upload():
         return redirect(url_for("docs.index"))
     original = file.filename
     ext = os.path.splitext(original)[1].lower()
+    if ext not in DOC_EXT:
+        flash("That file type is not allowed. Allowed: %s" % ", ".join(DOC_EXT), "error")
+        return redirect(url_for("docs.index"))
     stored = secrets.token_hex(12) + ext
     path = os.path.join(_upload_dir(), stored)
     file.save(path)
@@ -134,11 +137,25 @@ def delete(did):
     d = Document.query.get_or_404(did)
     if current_user().role not in ("admin", "staff") and d.created_by != current_user().full_name:
         abort(403)
+    att = d.attachment
     db.session.delete(d)
+    if att:
+        _delete_file(att)
     log_action(current_user().username, "Deleted document '%s'" % d.title)
     db.session.commit()
     flash("Document deleted.", "ok")
     return redirect(url_for("docs.index"))
+
+
+def _delete_file(att):
+    """Remove an attachment row and its file from disk."""
+    try:
+        path = os.path.join(_upload_dir(), att.filename)
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+    db.session.delete(att)
 
 
 @bp.route("/policy")

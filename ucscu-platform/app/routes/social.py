@@ -16,6 +16,8 @@ from ..models import (db, User, FeedPost, FeedComment, FeedLike, DirectThread,
 bp = Blueprint("social", __name__)
 
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp")
+FILE_EXT = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            ".txt", ".csv", ".odt", ".ods", ".zip")
 MAX_UPLOAD = 20 * 1024 * 1024  # 20 MB
 
 
@@ -27,11 +29,16 @@ def upload_dir():
 
 
 def save_upload(file_storage):
-    """Persist an uploaded file and return an Attachment row (not yet committed)."""
+    """Persist an uploaded file and return an Attachment row (not yet committed).
+
+    Returns None if there is no file, the extension is not allowed, or it is too big.
+    """
     if not file_storage or not file_storage.filename:
         return None
     original = file_storage.filename
     ext = os.path.splitext(original)[1].lower()
+    if ext not in IMAGE_EXT + FILE_EXT:
+        return None
     stored = secrets.token_hex(12) + ext
     path = os.path.join(upload_dir(), stored)
     file_storage.save(path)
@@ -43,6 +50,19 @@ def save_upload(file_storage):
     return Attachment(filename=stored, original_name=original,
                       content_type=file_storage.mimetype, size=size,
                       kind=kind, uploaded_by=current_user().id)
+
+
+def delete_attachment(att):
+    """Remove an attachment row and its file from disk."""
+    if att is None:
+        return
+    try:
+        path = os.path.join(upload_dir(), att.filename)
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+    db.session.delete(att)
 
 
 # ---------------------------------------------------------------- uploads
@@ -67,7 +87,11 @@ def feed():
 @login_required()
 def create_post():
     body = (request.form.get("body") or "").strip()
-    att = save_upload(request.files.get("photo"))
+    photo = request.files.get("photo")
+    att = save_upload(photo)
+    if photo and photo.filename and att is None:
+        flash("That attachment was rejected — it is either too large or not an allowed file type.", "error")
+        return redirect(url_for("social.feed"))
     if not body and not att:
         flash("Write something or attach a photo.", "error")
         return redirect(url_for("social.feed"))
@@ -87,6 +111,8 @@ def create_post():
 @login_required()
 def comment(pid):
     p = FeedPost.query.get_or_404(pid)
+    if not p.visible_to(current_user()):
+        abort(403)
     body = (request.form.get("body") or "").strip()
     if body:
         db.session.add(FeedComment(post_id=pid, author_id=current_user().id, body=body))
@@ -102,6 +128,8 @@ def comment(pid):
 def like(pid):
     p = FeedPost.query.get_or_404(pid)
     me = current_user()
+    if not p.visible_to(me):
+        abort(403)
     existing = FeedLike.query.filter_by(post_id=pid, user_id=me.id).first()
     if existing:
         db.session.delete(existing)
@@ -120,7 +148,10 @@ def delete_post(pid):
     p = FeedPost.query.get_or_404(pid)
     if p.author_id != current_user().id and current_user().role != "admin":
         abort(403)
+    att = p.attachment
     db.session.delete(p)
+    if att:
+        delete_attachment(att)
     log_action(current_user().username, "Deleted a feed post")
     db.session.commit()
     flash("Post deleted.", "ok")
@@ -168,7 +199,11 @@ def send_message(tid):
     if me.id not in (t.a_id, t.b_id):
         abort(403)
     body = (request.form.get("body") or "").strip()
-    att = save_upload(request.files.get("file"))
+    f = request.files.get("file")
+    att = save_upload(f)
+    if f and f.filename and att is None:
+        flash("That file was rejected — it is either too large or not an allowed file type.", "error")
+        return redirect(url_for("social.chat_with", uid=t.other(me).id))
     if not body and not att:
         return redirect(url_for("social.chat_with", uid=t.other(me).id))
     msg = DirectMessage(thread_id=tid, author_id=me.id, body=body)
