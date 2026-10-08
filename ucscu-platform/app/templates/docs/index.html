@@ -1,36 +1,69 @@
 {% extends "base.html" %}
 {% block title %}Doc Space — UCSCU Connect{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-1">Document & minutes library</h1>
-<p class="text-sm text-gray-500 mb-5">Minutes, policies, speeches — with ready-made templates</p>
+<h1 class="text-2xl font-bold mb-1">Document &amp; minutes library</h1>
+<p class="text-sm text-slate-500 mb-5">Write formatted documents, or upload existing files</p>
+
 <div class="grid lg:grid-cols-3 gap-4">
   <div class="card lg:col-span-2 overflow-x-auto">
     <table class="tbl">
       <thead><tr><th>Title</th><th>Category</th><th>Created by</th><th>Date</th><th></th></tr></thead>
       <tbody>
         {% for d in docs %}
-        <tr><td class="font-medium">{{ d.title }}</td>
-          <td><span class="badge {{ 'b-info' if d.category=='Minutes' else 'b-info' if d.category=='Policy' else 'b-gray' }}">{{ d.category }}</span></td>
-          <td>{{ d.created_by }}</td><td class="text-xs">{{ d.at.strftime('%d %b %Y') }}</td>
-          <td><a class="text-brand font-semibold" href="{{ url_for('docs.view', did=d.id) }}">Open →</a></td></tr>
-        {% else %}<tr><td colspan="5" class="text-gray-400">No documents yet — create one from a template.</td></tr>{% endfor %}
+        <tr>
+          <td class="font-medium">
+            {% if d.is_file %}<span class="mr-1">📎</span>{% endif %}
+            {{ d.title }}
+            <div class="text-xs text-slate-400">{{ d.excerpt }}</div>
+          </td>
+          <td><span class="badge b-info">{{ d.category }}</span></td>
+          <td>{{ d.created_by }}</td>
+          <td class="text-xs whitespace-nowrap">
+            {{ d.at.strftime('%d %b %Y') }}
+            {% if d.updated_at %}<div class="text-slate-400">edited</div>{% endif %}
+          </td>
+          <td class="whitespace-nowrap">
+            <a class="text-brand font-semibold" href="{{ url_for('docs.view', did=d.id) }}">Open →</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-slate-400">No documents yet — write one or upload a file.</td></tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
-  <div class="card h-fit">
-    <h2 class="font-bold mb-3">New document</h2>
-    <form method="post" action="{{ url_for('docs.new_doc') }}" class="space-y-2">
-      <input class="input" name="title" placeholder="Document title" required>
-      <select class="input" name="category">
-        <option>Minutes</option><option>Policy</option><option>Speech</option><option>Template</option>
-      </select>
-      <label class="lbl">Minute template (optional)</label>
-      <select class="input" name="template">
-        <option value="">— Blank —</option>
-        {% for t in templates %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
-      </select>
-      <button class="btn btn-brand w-full">Create</button>
-    </form>
+
+  <div class="space-y-4">
+    <div class="card">
+      <h2 class="font-bold mb-3">Write a document</h2>
+      <form method="post" action="{{ url_for('docs.new_doc') }}" class="space-y-2">
+        <input class="input" name="title" placeholder="Document title" required>
+        <select class="input" name="category">
+          <option>Minutes</option><option>Policy</option><option>Speech</option>
+          <option>Letter</option><option>Report</option><option>Template</option>
+        </select>
+        <label class="lbl">Start from a template (optional)</label>
+        <select class="input" name="template">
+          <option value="">— Blank —</option>
+          {% for t in templates %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-brand w-full justify-center">Create &amp; edit</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="font-bold mb-3">Upload a file</h2>
+      <form method="post" action="{{ url_for('docs.upload') }}" enctype="multipart/form-data" class="space-y-2">
+        <input class="input" type="file" name="file" required
+               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.webp,.odt,.ods">
+        <input class="input" name="title" placeholder="Title (optional — uses file name)">
+        <select class="input" name="category">
+          <option>File</option><option>Policy</option><option>Report</option><option>Minutes</option>
+        </select>
+        <button class="btn btn-gold w-full justify-center">Upload</button>
+      </form>
+      <p class="text-xs text-slate-400 mt-2">Up to 25 MB. PDF, Word, Excel, PowerPoint, images.</p>
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -14,6 +14,11 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="staff")
     sacco_id = db.Column(db.Integer, db.ForeignKey("sacco.id"), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    # active | pending | disabled — self-registered users start as "pending"
+    status = db.Column(db.String(20), nullable=False, default="active")
+    email = db.Column(db.String(120))
+    department = db.Column(db.String(120))
+    phone = db.Column(db.String(40))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     sacco = db.relationship("Sacco", backref="users")
@@ -23,6 +28,34 @@ class User(db.Model):
 
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
+
+    @property
+    def is_active(self):
+        return self.status == "active"
+
+    @property
+    def is_pending(self):
+        return self.status == "pending"
+
+
+class Setting(db.Model):
+    """Simple key/value store for org + LAN configuration."""
+    key = db.Column(db.String(60), primary_key=True)
+    value = db.Column(db.Text)
+
+
+def get_setting(key, default=None):
+    s = Setting.query.get(key)
+    return s.value if s is not None else default
+
+
+def set_setting(key, value):
+    s = Setting.query.get(key)
+    if s is None:
+        s = Setting(key=key)
+        db.session.add(s)
+    s.value = value
+    return s
 
 
 class Sacco(db.Model):
@@ -412,6 +445,235 @@ class Reply(db.Model):
     author = db.relationship("User")
 
 
+def _fmt_time(dt):
+    if not dt:
+        return ""
+    try:
+        return dt.strftime("%H:%M")
+    except AttributeError:
+        return str(dt)
+
+
+class Broadcast(db.Model):
+    """A grouped message (SMS / WhatsApp / Call) with a per-recipient queue."""
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(160), nullable=False)
+    body = db.Column(db.Text)
+    channel = db.Column(db.String(20), default="SMS")
+    scope = db.Column(db.String(40), default="All")
+    created_by = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    queue = db.relationship("BroadcastRecipient", backref="broadcast", cascade="all, delete-orphan")
+
+    @property
+    def total(self):
+        return len(self.queue)
+
+    @property
+    def sent(self):
+        return sum(1 for r in self.queue if r.status == "Sent")
+
+    @property
+    def failed(self):
+        return sum(1 for r in self.queue if r.status == "Failed")
+
+    @property
+    def queued(self):
+        return sum(1 for r in self.queue if r.status == "Queued")
+
+    @property
+    def coverage(self):
+        return round(self.sent / self.total * 100) if self.total else 0
+
+
+class BroadcastRecipient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    broadcast_id = db.Column(db.Integer, db.ForeignKey("broadcast.id"), nullable=False)
+    sacco_id = db.Column(db.Integer, db.ForeignKey("sacco.id"), nullable=False)
+    phone = db.Column(db.String(40))
+    status = db.Column(db.String(20), default="Queued")
+    attempts = db.Column(db.Integer, default=0)
+    error = db.Column(db.String(160))
+    queued_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime)
+    sacco = db.relationship("Sacco")
+
+
+class DirectThread(db.Model):
+    """A 1-to-1 conversation between two staff users."""
+    id = db.Column(db.Integer, primary_key=True)
+    a_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    b_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    a = db.relationship("User", foreign_keys=[a_id])
+    b = db.relationship("User", foreign_keys=[b_id])
+    messages = db.relationship("DirectMessage", backref="thread", cascade="all, delete-orphan")
+
+    def other(self, user):
+        return self.b if user.id == self.a_id else self.a
+
+    @property
+    def last(self):
+        return self.messages[-1] if self.messages else None
+
+
+class DirectMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    thread_id = db.Column(db.Integer, db.ForeignKey("direct_thread.id"), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    body = db.Column(db.Text)
+    attachment_id = db.Column(db.Integer, db.ForeignKey("attachment.id"))
+    at = db.Column(db.DateTime, default=datetime.utcnow)
+    author = db.relationship("User")
+    attachment = db.relationship("Attachment", foreign_keys=[attachment_id])
+
+    @property
+    def time_label(self):
+        return _fmt_time(self.at)
+
+
+class Attachment(db.Model):
+    """Uploaded file (photo, document). Stored on disk under instance/uploads."""
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)   # stored name on disk
+    original_name = db.Column(db.String(255))
+    content_type = db.Column(db.String(120))
+    size = db.Column(db.Integer, default=0)
+    kind = db.Column(db.String(20), default="file")        # image / file
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("user.id"))
+    at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def url(self):
+        return "/uploads/" + self.filename
+
+
+class FeedPost(db.Model):
+    """A post on the home feed — like a company Facebook page."""
+    id = db.Column(db.Integer, primary_key=True)
+    author_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    body = db.Column(db.Text)
+    attachment_id = db.Column(db.Integer, db.ForeignKey("attachment.id"))
+    scope = db.Column(db.String(60), default="all")        # all | staff_only | board_only
+    at = db.Column(db.DateTime, default=datetime.utcnow)
+    author = db.relationship("User")
+    attachment = db.relationship("Attachment", foreign_keys=[attachment_id])
+    comments = db.relationship("FeedComment", backref="post", cascade="all, delete-orphan")
+    likes = db.relationship("FeedLike", backref="post", cascade="all, delete-orphan")
+
+    def visible_to(self, user):
+        if self.scope == "all":
+            return True
+        if self.scope == "staff_only":
+            return user.role in ("admin", "staff", "board")
+        if self.scope == "board_only":
+            return user.role in ("admin", "board")
+        return True
+
+    def liked_by(self, user):
+        return any(l.user_id == user.id for l in self.likes)
+
+    @property
+    def time_label(self):
+        return _fmt_time(self.at)
+
+
+class FeedComment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("feed_post.id"), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    at = db.Column(db.DateTime, default=datetime.utcnow)
+    author = db.relationship("User")
+
+    @property
+    def time_label(self):
+        return _fmt_time(self.at)
+
+
+class FeedLike(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("feed_post.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    kind = db.Column(db.String(40), default="info")        # message/post/comment/like/call/announcement
+    text = db.Column(db.String(255), nullable=False)
+    link = db.Column(db.String(255))
+    read = db.Column(db.Boolean, default=False)
+    at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def time_label(self):
+        return _fmt_time(self.at)
+
+
+class CallSession(db.Model):
+    """LAN audio/video call signalling record. Peers exchange WebRTC offers
+    through this table, so calls work with no internet access."""
+    id = db.Column(db.Integer, primary_key=True)
+    room = db.Column(db.String(60), unique=True, nullable=False)
+    kind = db.Column(db.String(10), default="video")       # audio / video
+    caller_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    callee_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    status = db.Column(db.String(20), default="ringing")   # ringing/accepted/declined/ended
+    offer = db.Column(db.Text)
+    answer = db.Column(db.Text)
+    caller_ice = db.Column(db.Text)   # JSON array
+    callee_ice = db.Column(db.Text)   # JSON array
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ended_at = db.Column(db.DateTime)
+    caller = db.relationship("User", foreign_keys=[caller_id])
+    callee = db.relationship("User", foreign_keys=[callee_id])
+
+
+class MeetingRoom(db.Model):
+    """A multi-person LAN meeting room. Peers form a full mesh and exchange
+    WebRTC offers through GroupSignal rows, so no internet is required."""
+    id = db.Column(db.Integer, primary_key=True)
+    room = db.Column(db.String(60), unique=True, nullable=False)
+    title = db.Column(db.String(160), default="Meeting")
+    kind = db.Column(db.String(10), default="video")        # audio / video
+    host_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    status = db.Column(db.String(20), default="open")       # open / ended
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ended_at = db.Column(db.DateTime)
+    host = db.relationship("User", foreign_keys=[host_id])
+
+    @property
+    def active_members(self):
+        return [p for p in self.participants if p.left_at is None]
+
+
+class MeetingParticipant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("meeting_room.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    left_at = db.Column(db.DateTime)
+    user = db.relationship("User", foreign_keys=[user_id])
+    room = db.relationship("MeetingRoom", backref="participants")
+
+    __table_args__ = (db.UniqueConstraint("room_id", "user_id", name="uq_room_user"),)
+
+
+class GroupSignal(db.Model):
+    """One WebRTC handshake between two people in a meeting room."""
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("meeting_room.id"), nullable=False)
+    from_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    to_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    offer = db.Column(db.Text)
+    answer = db.Column(db.Text)
+    from_ice = db.Column(db.Text, default="[]")   # JSON array
+    to_ice = db.Column(db.Text, default="[]")     # JSON array
+
+    __table_args__ = (db.UniqueConstraint("room_id", "from_id", "to_id", name="uq_room_pair"),)
+
+
 class ConfidentialReport(db.Model):
     """Anonymous whistleblowing case. Author identity is never stored."""
     id = db.Column(db.Integer, primary_key=True)
@@ -427,9 +689,25 @@ class Document(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(60), default="Minutes")  # Minutes/Policy/Speech/Template
-    content = db.Column(db.Text)
+    content = db.Column(db.Text)                              # rich text (HTML) or plain text
+    content_type = db.Column(db.String(20), default="richtext")  # richtext | file | plain
+    attachment_id = db.Column(db.Integer, db.ForeignKey("attachment.id"))
     created_by = db.Column(db.String(80))
+    updated_at = db.Column(db.DateTime)
     at = db.Column(db.DateTime, default=datetime.utcnow)
+    attachment = db.relationship("Attachment", foreign_keys=[attachment_id])
+
+    @property
+    def is_file(self):
+        return self.attachment_id is not None
+
+    @property
+    def excerpt(self):
+        import re
+        if self.is_file:
+            return self.attachment.original_name if self.attachment else "file"
+        text = re.sub(r"<[^>]+>", " ", self.content or "")
+        return " ".join(text.split())[:120]
 
 
 MINUTE_TEMPLATES = {

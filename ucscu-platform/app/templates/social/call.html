@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Video' if call.kind=='video' else 'Voice' }} call — UCSCU Connect{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="card">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="avatar" style="background:var(--brand)">{{ other.full_name[:1] }}</div>
+      <div>
+        <div class="font-bold">{{ other.full_name }}</div>
+        <div id="statusLine" class="text-sm text-slate-500">Connecting…</div>
+      </div>
+      <div class="ml-auto text-xs chip">{{ 'Video' if call.kind=='video' else 'Voice' }} · LAN</div>
+    </div>
+
+    <div class="relative bg-slate-900 rounded-2xl overflow-hidden" style="aspect-ratio:16/9">
+      <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+      <video id="localVideo" autoplay playsinline muted
+             class="absolute bottom-3 right-3 w-40 rounded-xl border-2 border-white/50 shadow-lg {{ 'hidden' if call.kind!='video' }}"></video>
+      <div id="audioOnly" class="absolute inset-0 flex items-center justify-center text-white/70 {{ 'hidden' if call.kind=='video' }}">
+        🎧 Voice call in progress
+      </div>
+    </div>
+
+    <div class="flex items-center justify-center gap-2 mt-4">
+      <button id="muteBtn" class="btn btn-ghost">🎙️ Mute</button>
+      <button id="camBtn" class="btn btn-ghost {{ 'hidden' if call.kind!='video' }}">📷 Camera</button>
+      <button id="acceptBtn" class="btn btn-brand hidden">Accept call</button>
+      <button id="endBtn" class="btn btn-danger">End call</button>
+    </div>
+    <p class="text-xs text-slate-400 mt-3">Calls run peer-to-peer on the office LAN using WebRTC — no internet needed.</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const ROOM = "{{ call.room }}";
+const IS_CALLER = {{ 'true' if is_caller else 'false' }};
+const API = "/api/call/" + ROOM;
+let pc, localStream, remoteStream;
+const remoteVideo = document.getElementById('remoteVideo');
+const localVideo = document.getElementById('localVideo');
+const statusLine = document.getElementById('statusLine');
+const iceCfg = { iceServers: [] };   // LAN only — host candidates are enough
+
+async function getMedia() {
+  if (localStream) return localStream;
+  localStream = await navigator.mediaDevices.getUserMedia(
+    {{ '{video:true, audio:true}' if call.kind=='video' else '{video:false, audio:true}' }});
+  if (localVideo) localVideo.srcObject = localStream;
+  return localStream;
+}
+
+async function makePc() {
+  pc = new RTCPeerConnection(iceCfg);
+  remoteStream = new MediaStream();
+  remoteVideo.srcObject = remoteStream;
+  (await getMedia()).getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.ontrack = e => e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t));
+  pc.onicecandidate = e => { if (e.candidate) post({ action:'ice', ice: e.candidate }); };
+  pc.onconnectionstatechange = () => { if (pc.connectionState === 'connected') statusLine.textContent = 'Connected'; };
+  return pc;
+}
+
+async function post(obj) {
+  await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(obj) });
+}
+async function get() { const r = await fetch(API); return r.json(); }
+
+async function callerFlow() {
+  await makePc();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await post({ action:'offer', offer: offer });
+  statusLine.textContent = 'Ringing…';
+  poll(true);
+}
+
+async function calleeFlow(state) {
+  // wait until the caller has posted an offer
+  if (!state.offer) { setTimeout(async () => calleeFlow(await get()), 1500); return; }
+  statusLine.textContent = 'Incoming call — press Accept';
+  document.getElementById('acceptBtn').classList.remove('hidden');
+  document.getElementById('acceptBtn').onclick = async () => {
+    document.getElementById('acceptBtn').classList.add('hidden');
+    await makePc();
+    await pc.setRemoteDescription(new RTCSessionDescription(state.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await post({ action:'answer', answer: answer });
+    statusLine.textContent = 'Connecting…';
+    poll(false);
+  };
+}
+
+let seenCallerIce = 0, appliedAnswer = false;
+async function poll(isCaller) {
+  const s = await get();
+  if (s.status === 'declined' || s.status === 'ended') {
+    statusLine.textContent = s.status === 'declined' ? 'Call declined' : 'Call ended';
+    return;
+  }
+  if (pc) {
+    if (isCaller && !appliedAnswer && s.answer) {
+      appliedAnswer = true;
+      await pc.setRemoteDescription(new RTCSessionDescription(s.answer));
+    }
+    const list = isCaller ? s.callee_ice : s.caller_ice;
+    const idx = isCaller ? seenCallerIce : window.__seenOtherIce || 0;
+    for (let i = idx; i < list.length; i++) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(list[i])); } catch(e){}
+    }
+    if (isCaller) seenCallerIce = list.length; else window.__seenOtherIce = list.length;
+    if (!isCaller && pc.remoteDescription === null && s.offer) {
+      await pc.setRemoteDescription(new RTCSessionDescription(s.offer));
+    }
+  }
+  if (s.status !== 'ended') setTimeout(() => poll(isCaller), 1500);
+}
+
+document.getElementById('endBtn').onclick = async () => { await post({ action:'end' }); cleanup(); };
+document.getElementById('muteBtn').onclick = (e) => {
+  if (!localStream) return;
+  const t = localStream.getAudioTracks()[0]; t.enabled = !t.enabled;
+  e.target.textContent = t.enabled ? '🎙️ Mute' : '🔇 Unmute';
+};
+const camBtn = document.getElementById('camBtn');
+if (camBtn) camBtn.onclick = (e) => {
+  if (!localStream) return;
+  const t = localStream.getVideoTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled;
+  e.target.textContent = t.enabled ? '📷 Camera' : '🚫 Camera off';
+};
+function cleanup() { if (localStream) localStream.getTracks().forEach(t => t.stop()); if (pc) pc.close(); window.location.href = "{{ url_for('social.chat_with', uid=other.id) }}"; }
+
+(async () => {
+  if (IS_CALLER) callerFlow();
+  else calleeFlow(await get());
+})();
+</script>
+{% endblock %}

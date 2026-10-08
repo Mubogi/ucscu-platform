@@ -1,21 +1,72 @@
 {% extends "base.html" %}
 {% block title %}Users — UCSCU Connect{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-5">User management</h1>
+<h1 class="text-2xl font-bold mb-1">User management</h1>
+<p class="text-sm text-slate-500 mb-5">Approve new sign-ups, create users and manage access</p>
+
+{% if pending %}
+<div class="card mb-4 border-l-4" style="border-left-color:var(--brand)">
+  <h2 class="font-bold mb-3">⏳ Pending approval ({{ pending|length }})</h2>
+  <div class="space-y-2">
+    {% for u in pending %}
+    <div class="flex items-center gap-3 flex-wrap bg-slate-50 rounded-xl p-3">
+      <div class="avatar" style="background:#94a3b8">{{ u.full_name[:1] }}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold">{{ u.full_name }}</div>
+        <div class="text-xs text-slate-500">
+          @{{ u.username }}{% if u.department %} · {{ u.department }}{% endif %}
+          {% if u.email %} · {{ u.email }}{% endif %} · requested {{ u.created_at.strftime('%d %b %Y, %H:%M') }}
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('main.user_action', uid=u.id, action='approve') }}" class="flex items-center gap-2">
+        <select class="input w-auto py-1 text-sm" name="role">
+          {% for r in roles %}<option value="{{ r }}" {{ 'selected' if r=='staff' }}>{{ r }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-brand">Approve</button>
+      </form>
+      <form method="post" action="{{ url_for('main.user_action', uid=u.id, action='decline') }}"
+            onsubmit="return confirm('Decline and remove this request?')">
+        <button class="btn btn-ghost text-red-600">Decline</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <div class="grid lg:grid-cols-3 gap-4">
-  <div class="card lg:col-span-2">
+  <div class="card lg:col-span-2 overflow-x-auto">
     <table class="tbl">
-      <thead><tr><th>Username</th><th>Full name</th><th>Role</th><th>SACCO</th></tr></thead>
+      <thead><tr><th>Username</th><th>Full name</th><th>Role</th><th>Status</th><th>SACCO</th><th></th></tr></thead>
       <tbody>
         {% for u in users %}
-        <tr><td class="font-mono">{{ u.username }}</td><td>{{ u.full_name }}</td>
+        <tr>
+          <td class="font-mono">{{ u.username }}</td>
+          <td>{{ u.full_name }}{% if u.department %}<div class="text-xs text-slate-400">{{ u.department }}</div>{% endif %}</td>
           <td><span class="badge b-info capitalize">{{ u.role }}</span></td>
-          <td>{{ u.sacco.name if u.sacco else '—' }}</td></tr>
+          <td>
+            {% if u.status == 'active' %}<span class="badge b-ok">active</span>
+            {% elif u.status == 'pending' %}<span class="badge b-warn">pending</span>
+            {% else %}<span class="badge b-gray">disabled</span>{% endif %}
+          </td>
+          <td>{{ u.sacco.name if u.sacco else '—' }}</td>
+          <td class="whitespace-nowrap">
+            {% if u.status == 'active' and u.id != me.id %}
+            <form method="post" action="{{ url_for('main.user_action', uid=u.id, action='disable') }}" class="inline">
+              <button class="text-xs text-red-500 hover:underline">Disable</button>
+            </form>
+            {% elif u.status == 'disabled' %}
+            <form method="post" action="{{ url_for('main.user_action', uid=u.id, action='enable') }}" class="inline">
+              <button class="text-xs text-brand hover:underline">Enable</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <div class="card">
+  <div class="card h-fit">
     <h2 class="font-bold mb-3">Create user</h2>
     <form method="post" class="space-y-3">
       <div><label class="lbl">Username</label><input class="input" name="username" required></div>
@@ -26,7 +77,7 @@
         <select class="input" name="sacco_id"><option value="">—</option>
           {% for s in saccos %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div>
       <div><label class="lbl">Password</label><input class="input" name="password" type="password" required></div>
-      <button class="btn btn-brand w-full">Create user</button>
+      <button class="btn btn-brand w-full justify-center">Create user</button>
     </form>
   </div>
 </div>

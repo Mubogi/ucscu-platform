@@ -23,9 +23,17 @@
           <label class="lbl">Password</label>
           <input class="input" name="password" type="password" required>
         </div>
-        <button class="btn btn-brand w-full">Sign in</button>
+        <button class="btn btn-brand w-full justify-center">Sign in</button>
       </form>
-      <div class="mt-5 text-xs text-gray-500 border-t pt-3">
+      <div class="mt-4 text-center text-sm">
+        New here? <a class="text-brand font-semibold" href="{{ url_for('auth.register') }}">Create an account →</a>
+      </div>
+      <div class="mt-4 p-3 rounded-xl bg-slate-50 text-xs text-slate-600">
+        <p class="font-semibold mb-1">Connecting from another computer?</p>
+        <p>Join the office network, then open
+          <b class="font-mono" style="color:var(--brand)">{{ server_url }}</b></p>
+      </div>
+      <div class="mt-4 text-xs text-slate-500 border-t pt-3">
         <p class="font-semibold mb-1">Demo accounts (password in brackets):</p>
         <p>admin (admin123) · staff (staff123) · board (board123) · regulator (regulator123) · kyaps (sacco123 — SACCO user)</p>
       </div>

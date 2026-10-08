@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}LAN setup — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Network &amp; LAN setup</h1>
+<p class="text-sm text-slate-500 mb-5">Tell staff which network to join, then share the address or QR code below</p>
+
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="card">
+    <h2 class="font-bold mb-3">How staff connect</h2>
+    <ol class="list-decimal pl-5 space-y-2 text-sm text-slate-700">
+      <li>Connect the laptop to the office Wi-Fi / LAN cable. This is the network named below.</li>
+      <li>Open a browser and go to the address shown, or scan the QR code.</li>
+      <li>Sign in — or tap <b>Create an account</b> if you are new. An admin approves you.</li>
+    </ol>
+
+    <div class="mt-4 p-3 rounded-xl bg-slate-50">
+      <div class="text-xs font-bold text-slate-400 mb-1">THIS SERVER IS REACHABLE AT</div>
+      {% for link in links %}
+      <div class="font-mono text-lg" style="color:var(--brand)">{{ link }}</div>
+      {% endfor %}
+      <div class="text-xs text-slate-400 mt-2">
+        Network name (SSID): <b>{{ cfg.lan_name or '— set it on the right —' }}</b>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="text-xs font-bold text-slate-400 mb-2">SCAN TO CONNECT</div>
+      {% if qr_svg %}
+        <div class="bg-white border border-slate-200 rounded-xl p-3 inline-block [&_svg]:w-52 [&_svg]:h-52">{{ qr_svg|safe }}</div>
+        <p class="text-xs text-slate-400 mt-2">Point a phone or laptop camera at this code. Print it and pin it at reception.</p>
+      {% else %}
+        <div class="p-3 rounded-xl bg-amber-50 text-amber-800 text-sm">
+          QR library not installed. Run <code>pip install qrcode</code> on the server, then reload this page.
+          Until then, share the address above with staff.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="font-bold mb-3">Settings</h2>
+    <form method="post" class="space-y-3">
+      <div>
+        <label class="lbl">Organisation name</label>
+        <input class="input" name="org_name" value="{{ cfg.org_name }}" placeholder="UCSCU">
+      </div>
+      <div>
+        <label class="lbl">Office LAN name / Wi-Fi SSID</label>
+        <input class="input" name="lan_name" value="{{ cfg.lan_name }}" placeholder="UCSCU-Office">
+        <p class="text-xs text-slate-400 mt-1">Shown to staff so they join the right network.</p>
+      </div>
+      <div>
+        <label class="lbl">Office network range (CIDR) — for attendance check-in</label>
+        <input class="input" name="office_cidr" value="{{ cfg.office_cidr }}" placeholder="192.168.1.0/24">
+        <p class="text-xs text-slate-400 mt-1">
+          Only devices on this range can check in. Leave blank to allow any private LAN address.
+          Detected server IP: <b>{{ cfg.server_host }}</b>
+        </p>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label class="lbl">Server hostname / IP (fixed)</label>
+          <input class="input" name="server_host" value="{{ cfg.server_host }}">
+        </div>
+        <div>
+          <label class="lbl">Kyocera printer IP</label>
+          <input class="input" name="printer_host" value="{{ cfg.printer_host }}" placeholder="192.168.1.50">
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Printer raw port</label>
+        <input class="input" name="printer_port" value="{{ cfg.printer_port }}" placeholder="9100">
+      </div>
+
+      <details class="rounded-xl bg-slate-50 p-3" {{ 'open' if cfg.smtp_host }}>
+        <summary class="cursor-pointer text-sm font-semibold">Email (optional)</summary>
+        <p class="text-xs text-slate-500 my-2">
+          Only needed if you want the server to send mail (for example announcement
+          copies). Leave blank to keep everything on the LAN.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="lbl">Mail server (SMTP host)</label>
+            <input class="input" name="smtp_host" value="{{ cfg.smtp_host }}" placeholder="mail.ucscu.co.ug">
+          </div>
+          <div>
+            <label class="lbl">SMTP port</label>
+            <input class="input" name="smtp_port" value="{{ cfg.smtp_port }}" placeholder="25">
+          </div>
+          <div>
+            <label class="lbl">Username</label>
+            <input class="input" name="smtp_user" value="{{ cfg.smtp_user }}">
+          </div>
+          <div>
+            <label class="lbl">Password</label>
+            <input class="input" type="password" name="smtp_password" value="{{ cfg.smtp_password }}">
+          </div>
+          <div>
+            <label class="lbl">From address</label>
+            <input class="input" name="smtp_from" value="{{ cfg.smtp_from }}" placeholder="no-reply@ucscu.co.ug">
+          </div>
+          <div class="flex items-end">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="smtp_tls" value="1" {{ 'checked' if cfg.smtp_tls == '1' }}>
+              Use STARTTLS
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <button class="btn btn-brand w-full justify-center">Save setup</button>
+    </form>
+
+    <form method="post" action="{{ url_for('main.test_printer') }}" class="mt-2">
+      <button class="btn btn-ghost w-full justify-center" {{ '' if printer_ok else 'disabled' }}>
+        🖨️ Send a test page to the printer
+      </button>
+      {% if not printer_ok %}
+        <p class="text-xs text-slate-400 mt-1 text-center">Save a printer IP first.</p>
+      {% endif %}
+    </form>
+
+    <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-1">
+      <p><b>Status:</b> printer {{ 'configured' if printer_ok else 'not configured' }} · email {{ 'configured' if email_ok else 'not configured' }}</p>
+      <p><b>Auto-start:</b> run <code>install-autostart.bat</code> as Administrator once, and the server starts after every boot.</p>
+      <p><b>Tip:</b> give this server a fixed IP (or DHCP reservation) so the address above never changes.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

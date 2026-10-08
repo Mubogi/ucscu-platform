@@ -15,14 +15,65 @@ A full-stack web platform for **Uganda Cooperative Savings and Credit Union Limi
 9. Governance — board/AGM meetings, agendas, minutes, resolutions with e-voting
 10. Admin — user management, full audit log
 
+## Running on the office LAN (Windows Server 2008 R2)
+
+The server binds to `0.0.0.0:12000`, so any device on the same network can reach it.
+
+1. Install Python 3.8 and run `pip install -r requirements.txt`.
+2. Start it with `start-server.bat`. On startup the console prints the LAN address
+   and an ASCII QR code — share that, or open **Administration → LAN Setup**.
+3. Run `install-autostart.bat` **as Administrator** once. It registers a Task
+   Scheduler job so the server starts automatically after the machine boots.
+4. Give the server a fixed IP (or a DHCP reservation) so the address never changes.
+
+**How staff connect:** join the office Wi-Fi/LAN, open the printed address in a
+browser, or scan the QR code. The landing page shows the address again. New staff
+tap "Create an account", and an administrator approves them under **Users**.
+
+The LAN Setup screen records the office network name and the CIDR range used to
+gate attendance check-in (only devices on that range can clock in).
+
+## Integrations (all optional, all on the LAN)
+
+Set these on the **LAN Setup** screen (Administration → LAN Setup):
+
+- **Kyocera / network printing** — printer IP + raw port (default 9100). Use
+  "Send a test page to the printer" to confirm it works. The server talks straight
+  to the printer's raw socket, so no drivers are needed on the server.
+- **Email (SMTP)** — host, port, username, password, from address and STARTTLS.
+  Used for server-sent mail. Leave blank to keep everything on the LAN.
+
+Without these configured the app still runs; it just reports that they are not set.
+
+## Suggested features still to add (roadmap)
+
+These are not built yet — useful next steps, roughly in priority order:
+
+1. **Backups** — a scheduled copy of `instance/ucscu.db` and `instance/uploads`
+   to a second disk or a network share. High priority for a server kept in a locked room.
+2. **Automatic file retention** — purge old uploads after a set period, with an audit trail.
+3. **Rich text in announcements and chat** — Doc Space has formatting; Announcements
+   and Messages are still plain text.
+4. **Search** — a single search box across documents, people, posts and announcements.
+5. **SACCO member self-service portal** — let member SACCOs log in to see their own
+   PEARLS status and dues only.
+6. **Reporting exports** — PDF/Excel exports beyond the CSV that PEARLS already offers.
+7. **Two-factor sign-in** — optional TOTP for admin accounts.
+8. **Multi-language** — Luganda alongside English for member-facing screens.
+
 ## Phase 2 Modules — Workplace hub
 
-1. Attendance — LAN-gated check-in/out (rejects non-office IPs), field exemption channel, lateness reason capture, leave/absence workflow, meeting attendance registers
-2. Visitors — reception register, numbered gate tags with printable passes, check-in/out
-3. Hub — internal social-media-style discussion spaces scoped by hierarchy (everyone / staff-only / board-only / SACCO leaders) with threaded replies
-4. Whistle — anonymous whistleblowing: no identity stored, token-based status check, case workflow for oversight
-5. Doc Space — minutes & documents library with templates (General/Board/AGM/Attendance register); HR & conduct policy summary page
-6. Calendar — shared view aggregating meetings, trainings, UMRA deadlines, and approved leave
+1. Home feed — a company social feed: post updates, headlines and photos, like, comment; scoped to everyone / staff / board
+2. Messages — private 1-to-1 chat with file and image attachments, plus unread notifications
+3. Calls — LAN audio/video calls between staff using peer-to-peer WebRTC (no internet required) with mute, camera toggle and screen-ready layout
+4. Notifications — live bell counter, toast popups and sound for new messages, comments, likes, calls and announcements
+5. Attendance — LAN-gated check-in/out (rejects non-office IPs), field exemption channel, lateness reason capture, leave/absence workflow, meeting attendance registers
+6. Visitors — reception register, numbered gate tags with printable passes, check-in/out
+7. Spaces (Hub) — internal social-media-style discussion spaces scoped by hierarchy (everyone / staff-only / board-only / SACCO leaders) with threaded replies
+8. Whistle — anonymous whistleblowing: no identity stored, token-based status check, case workflow for oversight
+9. Doc Space — minutes & documents library with templates (General/Board/AGM/Attendance register); HR & conduct policy summary page
+10. Calendar — shared view aggregating meetings, trainings, UMRA deadlines, and approved leave
+11. Bulk Messaging — grouped SMS / WhatsApp / Call queue with per-recipient coverage tracking
 
 ## Roles
 

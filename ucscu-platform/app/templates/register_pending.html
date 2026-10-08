@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Awaiting approval — UCSCU Connect{% endblock %}
+{% block public %}
+<div class="min-h-screen flex items-center justify-center brand-dark p-4">
+  <div class="w-full max-w-md text-center">
+    <div class="bg-gold rounded-full w-16 h-16 mx-auto flex items-center justify-center text-3xl font-black text-green-900">✓</div>
+    <h1 class="text-white text-2xl font-bold mt-3">Thank you, {{ full_name }}</h1>
+    <div class="card mt-5 text-left">
+      <p class="font-semibold mb-2">Your request is pending</p>
+      <p class="text-sm text-slate-600">
+        An administrator has been notified and will approve your account. Once approved, you can sign in
+        with the username and password you just chose.
+      </p>
+      <a class="btn btn-brand w-full justify-center mt-4" href="{{ url_for('auth.login') }}">Back to sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

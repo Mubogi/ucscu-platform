@@ -3,13 +3,23 @@ from datetime import datetime, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from .. import login_required, current_user
 from ..models import (db, User, CheckInEvent, LeaveRequest, AttendanceMeeting,
-                      AttendanceRecord, log_action)
+                      AttendanceRecord, get_setting, log_action)
 
 bp = Blueprint("attendance", __name__, url_prefix="/attendance")
 
-# Office networks where on-premises check-in is allowed (empty list = demo mode allows
-# private/LAN IPs; set real CIDRs in production).
+# Extra office networks where on-premises check-in is allowed. The primary range is
+# set by an admin on the LAN Setup screen; anything listed here is added on top.
 OFFICE_NETS = []
+
+
+def _office_nets():
+    """CIDRs that may check in: the admin's LAN Setup range plus OFFICE_NETS."""
+    nets = []
+    configured = (get_setting("office_cidr") or "").strip()
+    if configured:
+        nets.extend(part.strip() for part in configured.replace(";", ",").split(",") if part.strip())
+    nets.extend(OFFICE_NETS)
+    return nets
 
 
 def _on_office_lan(ip):
@@ -17,9 +27,16 @@ def _on_office_lan(ip):
         addr = ipaddress.ip_address(ip)
     except ValueError:
         return False
-    if not OFFICE_NETS:
-        return addr.is_private  # demo behaviour
-    return any(addr in ipaddress.ip_network(n) for n in OFFICE_NETS)
+    nets = _office_nets()
+    if not nets:
+        return addr.is_private  # demo behaviour until an admin sets the range
+    for n in nets:
+        try:
+            if addr in ipaddress.ip_network(n, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 @bp.route("/")

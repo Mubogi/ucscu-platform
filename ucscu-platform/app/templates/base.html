@@ -4,109 +4,228 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}UCSCU Connect{% endblock %}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind is served from this server so the UI works on a LAN with no internet -->
+  <script src="{{ url_for('static', filename='vendor/tailwind.js') }}"></script>
+  <script>
+    tailwind.config = { theme: { extend: {
+      colors: { brand: {50:'#eefbf3',100:'#d6f5e2',200:'#b0eac8',300:'#7bd9a6',400:'#43c07f',
+                         500:'#1da85f',600:'#12874c',700:'#0f6b3f',800:'#105534',900:'#0e452c'},
+                gold: {400:'#f5c451',500:'#e8a713',600:'#c98a08'} } } } };
+  </script>
   <style>
-    :root { --brand:#1a5c2a; --brand-dark:#12401e; --gold:#e8a713; }
-    .brand { background: var(--brand); } .brand-dark { background: var(--brand-dark); }
-    .text-brand { color: var(--brand); } .text-gold { color: var(--gold); } .bg-gold { background: var(--gold); }
-    .navlink { display:flex; align-items:center; gap:.6rem; padding:.55rem .9rem; border-radius:.5rem; color:#d5e8da; font-size:.875rem; }
-    .navlink:hover, .navlink.active { background: rgba(255,255,255,.12); color:#fff; }
-    .card { background:#fff; border-radius:.75rem; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:1.25rem; }
-    .btn { display:inline-block; padding:.5rem 1rem; border-radius:.5rem; font-size:.875rem; font-weight:600; cursor:pointer; border:0; }
-    .btn-brand { background:var(--brand); color:#fff; } .btn-brand:hover { background:var(--brand-dark); }
-    .btn-gold { background:var(--gold); color:#1a1a1a; } .btn-gold:hover { filter:brightness(.95); }
-    .btn-ghost { background:#e5e7eb; color:#111827; } .btn-ghost:hover { background:#d1d5db; }
-    .input { width:100%; border:1px solid #d1d5db; border-radius:.5rem; padding:.5rem .75rem; font-size:.875rem; background:#fff; }
-    .input:focus { outline:2px solid var(--brand); border-color:var(--brand); }
+    :root { --brand:#12874c; --brand-light:#eefbf3; --gold:#e8a713; --ink:#0f172a; --muted:#64748b; }
+    body { background:#f6f8fb; color:var(--ink); font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
+    .navgroup-title { font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; padding:.75rem .9rem .25rem; font-weight:700; }
+    .navlink { display:flex; align-items:center; gap:.7rem; padding:.5rem .8rem; border-radius:.6rem; color:#475569; font-size:.875rem; font-weight:500; }
+    .navlink:hover { background:#f1f5f9; color:#0f172a; }
+    .navlink.active { background:var(--brand-light); color:var(--brand); font-weight:700; }
+    .card { background:#fff; border:1px solid #e8edf3; border-radius:1rem; box-shadow:0 1px 2px rgba(16,24,40,.05); padding:1.1rem 1.25rem; }
+    .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem 1rem; border-radius:.65rem; font-size:.85rem; font-weight:600; cursor:pointer; border:0; transition:.15s; }
+    .btn-brand { background:var(--brand); color:#fff; } .btn-brand:hover { background:#0f6b3f; }
+    .btn-gold { background:var(--gold); color:#231a02; } .btn-gold:hover { filter:brightness(.95); }
+    .btn-ghost { background:#f1f5f9; color:#334155; } .btn-ghost:hover { background:#e2e8f0; }
+    .btn-danger { background:#fee2e2; color:#b91c1c; } .btn-danger:hover { background:#fecaca; }
+    .input { width:100%; border:1px solid #dbe2ea; border-radius:.65rem; padding:.55rem .8rem; font-size:.875rem; background:#fff; transition:.15s; }
+    .input:focus { outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(18,135,76,.15); }
     table.tbl { width:100%; font-size:.85rem; border-collapse:collapse; }
-    table.tbl th { text-align:left; padding:.55rem .75rem; background:#f3f4f6; color:#374151; font-weight:600; white-space:nowrap; }
-    table.tbl td { padding:.55rem .75rem; border-top:1px solid #e5e7eb; vertical-align:top; }
-    .badge { display:inline-block; padding:.15rem .55rem; border-radius:9999px; font-size:.72rem; font-weight:700; }
+    table.tbl th { text-align:left; padding:.6rem .75rem; background:#f8fafc; color:#475569; font-weight:600; white-space:nowrap; }
+    table.tbl td { padding:.6rem .75rem; border-top:1px solid #eef2f6; vertical-align:top; }
+    .badge { display:inline-block; padding:.2rem .6rem; border-radius:9999px; font-size:.72rem; font-weight:700; }
     .b-ok { background:#dcfce7; color:#166534; } .b-warn { background:#fef9c3; color:#854d0e; }
     .b-danger { background:#fee2e2; color:#991b1b; } .b-info { background:#dbeafe; color:#1e40af; }
-    .b-gray { background:#f3f4f6; color:#374151; }
-    label.lbl { display:block; font-size:.75rem; font-weight:600; color:#4b5563; margin-bottom:.2rem; }
+    .b-gray { background:#f1f5f9; color:#475569; }
+    label.lbl { display:block; font-size:.75rem; font-weight:600; color:#475569; margin-bottom:.25rem; }
+    .chip { display:inline-flex; align-items:center; gap:.35rem; background:#f1f5f9; color:#334155; border-radius:9999px; padding:.3rem .7rem; font-size:.78rem; font-weight:600; }
+    .avatar { width:2.5rem; height:2.5rem; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; }
+    @keyframes pop { from { transform:translateY(8px); opacity:0 } to { transform:none; opacity:1 } }
+    .pop { animation:pop .18s ease-out; }
   </style>
 </head>
-<body class="bg-gray-100 text-gray-900 min-h-screen">
+<body class="min-h-screen">
 {% if me %}
 <div class="flex min-h-screen">
-  <aside class="brand-dark w-60 shrink-0 hidden md:flex flex-col text-white sticky top-0 h-screen overflow-y-auto">
-    <div class="p-4 border-b border-white/10">
-      <div class="flex items-center gap-2">
-        <div class="bg-gold rounded-full w-9 h-9 flex items-center justify-center font-black text-green-900">U</div>
-        <div>
-          <div class="font-bold leading-tight">UCSCU Connect</div>
-          <div class="text-[10px] text-green-200">National SACCO Apex Platform</div>
-        </div>
+  <aside class="hidden md:flex w-64 shrink-0 flex-col bg-white border-r border-slate-200 sticky top-0 h-screen overflow-y-auto">
+    <a href="{{ url_for('social.feed') }}" class="p-4 border-b border-slate-100 flex items-center gap-2">
+      <div class="rounded-xl w-9 h-9 flex items-center justify-center font-black text-white" style="background:var(--brand)">U</div>
+      <div>
+        <div class="font-bold leading-tight">UCSCU Connect</div>
+        <div class="text-[10px] text-slate-400">National SACCO Apex Platform</div>
       </div>
-    </div>
-    <nav class="p-3 space-y-1 flex-1">
-      <a class="navlink {{ 'active' if request.endpoint=='main.dashboard' }}" href="{{ url_for('main.dashboard') }}">📊 Dashboard</a>
-      <a class="navlink {{ 'active' if request.blueprint=='saccos' }}" href="{{ url_for('saccos.index') }}">🏦 SACCO Registry</a>
-      <a class="navlink {{ 'active' if request.blueprint=='cff' }}" href="{{ url_for('cff.index') }}">💰 Central Finance</a>
-      <a class="navlink {{ 'active' if request.blueprint=='reports' }}" href="{{ url_for('reports.index') }}">📈 PEARLS Reports</a>
-      <a class="navlink {{ 'active' if request.blueprint=='training' }}" href="{{ url_for('training.index') }}">🎓 Training</a>
-      <a class="navlink {{ 'active' if request.endpoint=='services.insurance' }}" href="{{ url_for('services.insurance') }}">🛡️ Insurance (CIC)</a>
-      <a class="navlink {{ 'active' if request.endpoint=='services.shop' }}" href="{{ url_for('services.shop') }}">🛒 Stationery</a>
-      <a class="navlink {{ 'active' if request.blueprint=='comms' }}" href="{{ url_for('comms.index') }}">📢 Announcements</a>
-      <a class="navlink {{ 'active' if request.blueprint=='governance' }}" href="{{ url_for('governance.index') }}">🏛️ Governance</a>
-      <div class="pt-3 mt-3 border-t border-white/10">
-      <a class="navlink {{ 'active' if request.blueprint=='attendance' }}" href="{{ url_for('attendance.index') }}">✅ Attendance</a>
-      <a class="navlink {{ 'active' if request.blueprint=='visitors' }}" href="{{ url_for('visitors.index') }}">🧍 Visitors</a>
-      <a class="navlink {{ 'active' if request.blueprint=='hub' }}" href="{{ url_for('hub.index') }}">💬 Hub</a>
-      <a class="navlink {{ 'active' if request.blueprint=='whistle' }}" href="{{ url_for('whistle.index') }}">🤐 Whistle</a>
-      <a class="navlink {{ 'active' if request.blueprint=='docs' }}" href="{{ url_for('docs.index') }}">📄 Doc Space</a>
-      <a class="navlink {{ 'active' if request.endpoint=='calendar.index' }}" href="{{ url_for('calendar.index') }}">📅 Calendar</a>
-      </div>
+    </a>
+    <nav class="p-3 flex-1">
+      <div class="navgroup-title">Workspace</div>
+      <a class="navlink {{ 'active' if request.endpoint=='social.feed' }}" href="{{ url_for('social.feed') }}"><span>🏠</span> Home</a>
+      <a class="navlink {{ 'active' if request.endpoint in ('social.chat','social.chat_with') }}" href="{{ url_for('social.chat') }}"><span>💬</span> Messages</a>
+      <a class="navlink {{ 'active' if request.blueprint=='meetings' }}" href="{{ url_for('meetings.index') }}"><span>📹</span> Meetings</a>
+      <a class="navlink {{ 'active' if request.blueprint=='hub' }}" href="{{ url_for('hub.index') }}"><span>🗣️</span> Spaces</a>
+      <a class="navlink {{ 'active' if request.blueprint=='comms' }}" href="{{ url_for('comms.index') }}"><span>📢</span> Announcements</a>
+      <a class="navlink {{ 'active' if request.endpoint=='social.notifications' }}" href="{{ url_for('social.notifications') }}"><span>🔔</span> Notifications
+        {% if unread_notifications %}<span class="ml-auto badge b-danger">{{ unread_notifications }}</span>{% endif %}</a>
+      <a class="navlink {{ 'active' if request.endpoint=='calendar.index' }}" href="{{ url_for('calendar.index') }}"><span>📅</span> Calendar</a>
+
+      <div class="navgroup-title">Apex operations</div>
+      <a class="navlink {{ 'active' if request.endpoint=='main.dashboard' }}" href="{{ url_for('main.dashboard') }}"><span>📊</span> Dashboard</a>
+      <a class="navlink {{ 'active' if request.blueprint=='saccos' }}" href="{{ url_for('saccos.index') }}"><span>🏦</span> SACCO Registry</a>
+      <a class="navlink {{ 'active' if request.blueprint=='cff' }}" href="{{ url_for('cff.index') }}"><span>💰</span> Central Finance</a>
+      <a class="navlink {{ 'active' if request.blueprint=='reports' }}" href="{{ url_for('reports.index') }}"><span>📈</span> PEARLS Reports</a>
+      <a class="navlink {{ 'active' if request.blueprint=='training' }}" href="{{ url_for('training.index') }}"><span>🎓</span> Training</a>
+      <a class="navlink {{ 'active' if request.endpoint=='services.insurance' }}" href="{{ url_for('services.insurance') }}"><span>🛡️</span> Insurance (CIC)</a>
+      <a class="navlink {{ 'active' if request.endpoint=='services.shop' }}" href="{{ url_for('services.shop') }}"><span>🛒</span> Stationery</a>
+      <a class="navlink {{ 'active' if request.blueprint=='messaging' }}" href="{{ url_for('messaging.index') }}"><span>✉️</span> Bulk Messaging</a>
+      <a class="navlink {{ 'active' if request.blueprint=='governance' }}" href="{{ url_for('governance.index') }}"><span>🏛️</span> Governance</a>
+
+      <div class="navgroup-title">Workplace</div>
+      <a class="navlink {{ 'active' if request.blueprint=='attendance' }}" href="{{ url_for('attendance.index') }}"><span>✅</span> Attendance</a>
+      <a class="navlink {{ 'active' if request.blueprint=='visitors' }}" href="{{ url_for('visitors.index') }}"><span>🧍</span> Visitors</a>
+      <a class="navlink {{ 'active' if request.blueprint=='whistle' }}" href="{{ url_for('whistle.index') }}"><span>🤐</span> Whistle</a>
+      <a class="navlink {{ 'active' if request.blueprint=='docs' }}" href="{{ url_for('docs.index') }}"><span>📄</span> Doc Space</a>
       {% if me.role == 'admin' %}
-      <div class="pt-3 mt-3 border-t border-white/10">
-        <a class="navlink" href="{{ url_for('main.users') }}">👥 Users</a>
-        <a class="navlink" href="{{ url_for('main.audit') }}">🧾 Audit Log</a>
-      </div>
+      <div class="navgroup-title">Administration</div>
+      <a class="navlink {{ 'active' if request.endpoint=='main.users' }}" href="{{ url_for('main.users') }}"><span>👥</span> Users
+        {% if pending_users %}<span class="ml-auto badge b-warn">{{ pending_users }}</span>{% endif %}</a>
+      <a class="navlink {{ 'active' if request.endpoint=='main.setup' }}" href="{{ url_for('main.setup') }}"><span>🌐</span> LAN Setup</a>
+      <a class="navlink {{ 'active' if request.endpoint=='main.audit' }}" href="{{ url_for('main.audit') }}"><span>🧾</span> Audit Log</a>
       {% endif %}
     </nav>
-    <div class="p-3 border-t border-white/10 text-xs text-green-200">
-      <div class="font-semibold text-white">{{ me.full_name }}</div>
-      <div class="capitalize">{{ me.role }}{% if me.sacco %} — {{ me.sacco.name }}{% endif %}</div>
-      <a href="{{ url_for('auth.logout') }}" class="text-gold hover:underline">Sign out</a>
+    <div class="p-3 border-t border-slate-100">
+      <a href="{{ url_for('auth.profile') }}" class="flex items-center gap-2 hover:bg-slate-50 rounded-lg p-1 -m-1" title="My profile">
+        <div class="avatar text-sm" style="background:var(--brand)">{{ me.full_name[:1] }}</div>
+        <div class="min-w-0">
+          <div class="font-semibold text-sm truncate">{{ me.full_name }}</div>
+          <div class="text-xs text-slate-400 capitalize">{{ me.role }}{% if me.sacco %} — {{ me.sacco.name }}{% endif %}</div>
+        </div>
+      </a>
+      <div class="flex gap-2 mt-3">
+        <a href="{{ url_for('auth.profile') }}" class="btn btn-ghost flex-1 justify-center">Profile</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost flex-1 justify-center">Sign out</a>
+      </div>
     </div>
   </aside>
 
   <main class="flex-1 min-w-0">
-    <div class="brand text-white px-5 py-3 flex items-center justify-between md:hidden">
-      <span class="font-bold">UCSCU Connect</span>
-      <a href="{{ url_for('auth.logout') }}" class="text-xs underline">Sign out</a>
-    </div>
-    <div class="md:hidden brand-dark px-3 py-2 flex gap-2 overflow-x-auto text-xs">
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('main.dashboard') }}">Dashboard</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('saccos.index') }}">SACCOs</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('cff.index') }}">CFF</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('reports.index') }}">Reports</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('training.index') }}">Training</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('services.insurance') }}">Insurance</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('services.shop') }}">Shop</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('comms.index') }}">News</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('governance.index') }}">Governance</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('attendance.index') }}">Attendance</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('visitors.index') }}">Visitors</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('hub.index') }}">Hub</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('whistle.index') }}">Whistle</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('docs.index') }}">Docs</a>
-      <a class="text-green-100 whitespace-nowrap" href="{{ url_for('calendar.index') }}">Calendar</a>
-    </div>
+    <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 z-20">
+      <div class="md:hidden font-bold" style="color:var(--brand)">UCSCU Connect</div>
+      <div class="relative hidden sm:block flex-1 max-w-md">
+        <input id="peopleSearch" class="input pl-9" placeholder="Search people to message…" autocomplete="off">
+        <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
+        <div id="peopleResults" class="hidden absolute mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg z-30 overflow-hidden"></div>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <a href="{{ url_for('social.notifications') }}" class="relative p-2 rounded-lg hover:bg-slate-100" title="Notifications">
+          🔔<span data-bell-count class="absolute -top-0.5 -right-0.5 badge b-danger {{ '' if unread_notifications else 'hidden' }}">{{ unread_notifications }}</span>
+        </a>
+        <a href="{{ url_for('meetings.index') }}" class="btn btn-ghost">📹 <span class="hidden sm:inline">Meet</span></a>
+        <a href="{{ url_for('social.chat') }}" class="btn btn-ghost">💬 <span class="hidden sm:inline">Messages</span></a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost md:hidden">Sign out</a>
+      </div>
+    </header>
+
+    <nav class="md:hidden bg-white border-b border-slate-200 px-3 py-2 flex gap-2 overflow-x-auto text-xs sticky top-[57px] z-10">
+      <a class="chip" href="{{ url_for('social.feed') }}">Home</a>
+      <a class="chip" href="{{ url_for('social.chat') }}">Messages</a>
+      <a class="chip" href="{{ url_for('meetings.index') }}">Meetings</a>
+      <a class="chip" href="{{ url_for('hub.index') }}">Spaces</a>
+      <a class="chip" href="{{ url_for('comms.index') }}">News</a>
+      <a class="chip" href="{{ url_for('calendar.index') }}">Calendar</a>
+      <a class="chip" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+      <a class="chip" href="{{ url_for('saccos.index') }}">SACCOs</a>
+      <a class="chip" href="{{ url_for('cff.index') }}">CFF</a>
+      <a class="chip" href="{{ url_for('reports.index') }}">PEARLS</a>
+      <a class="chip" href="{{ url_for('attendance.index') }}">Attendance</a>
+      <a class="chip" href="{{ url_for('visitors.index') }}">Visitors</a>
+      <a class="chip" href="{{ url_for('docs.index') }}">Docs</a>
+      <a class="chip" href="{{ url_for('whistle.index') }}">Whistle</a>
+      <a class="chip" href="{{ url_for('governance.index') }}">Governance</a>
+      <a class="chip" href="{{ url_for('training.index') }}">Training</a>
+      <a class="chip" href="{{ url_for('messaging.index') }}">Bulk SMS</a>
+      <a class="chip" href="{{ url_for('auth.profile') }}">Profile</a>
+      {% if me.role == 'admin' %}
+      <a class="chip" href="{{ url_for('main.users') }}">Users{% if pending_users %} ({{ pending_users }}){% endif %}</a>
+      <a class="chip" href="{{ url_for('main.setup') }}">LAN Setup</a>
+      <a class="chip" href="{{ url_for('main.audit') }}">Audit</a>
+      {% endif %}
+    </nav>
+
     <div class="p-4 md:p-6 max-w-7xl mx-auto">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for cat, msg in messages %}
-          <div class="mb-4 px-4 py-2.5 rounded-lg text-sm font-medium {{ 'bg-green-100 text-green-800' if cat=='ok' else 'bg-red-100 text-red-800' }}">{{ msg }}</div>
+          <div class="mb-4 px-4 py-2.5 rounded-xl text-sm font-medium pop {{ 'bg-green-50 text-green-800 border border-green-200' if cat=='ok' else 'bg-red-50 text-red-800 border border-red-200' }}">{{ msg }}</div>
         {% endfor %}
       {% endwith %}
       {% block content %}{% endblock %}
     </div>
   </main>
 </div>
+
+<!-- live notification toasts -->
+<div id="toastHost" class="fixed bottom-5 right-5 space-y-2 z-50 w-80"></div>
+<script>
+  let __seen = new Set();
+  let __primed = false;
+  async function pollNotifications() {
+    try {
+      const r = await fetch("{{ url_for('social.api_notifications') }}");
+      if (!r.ok) return;
+      const d = await r.json();
+      const count = document.querySelectorAll('[data-bell-count]');
+      count.forEach(el => {
+        el.textContent = d.unread;
+        el.classList.toggle('hidden', !d.unread);
+      });
+      d.items.forEach(n => {
+        if (__primed && !__seen.has(n.id)) showToast(n);
+        __seen.add(n.id);
+      });
+      __primed = true;
+    } catch (e) {}
+  }
+  function showToast(n) {
+    const host = document.getElementById('toastHost');
+    const icons = { message:'💬', comment:'💭', like:'👍', call:'📞', post:'📝',
+                    announcement:'📢', approval:'👥' };
+    const a = document.createElement('a');
+    a.href = n.link || '#';
+    a.className = 'pop block bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-sm hover:shadow-xl';
+    a.innerHTML = '<div class="flex gap-2"><span>' + (icons[n.kind]||'🔔') + '</span><div><div>' + n.text + '</div><div class="text-xs text-slate-400">' + n.at + '</div></div></div>';
+    host.appendChild(a);
+    try { beep(n.kind); } catch(e) {}
+    try {
+      if (window.Notification && Notification.permission === 'granted') {
+        const desk = new Notification('UCSCU Connect', { body: n.text, tag: n.id });
+        desk.onclick = () => { window.focus(); window.location.href = n.link || '/'; };
+      }
+    } catch (e) {}
+    setTimeout(() => a.remove(), 7000);
+  }
+  function beep(kind) {
+    const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
+    const c = new Ctx(); const o = c.createOscillator(); const g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.frequency.value = kind === 'call' ? 920 : kind === 'message' ? 660 : 540;
+    g.gain.value = 0.06; o.start(); setTimeout(() => { o.stop(); c.close(); }, kind === 'call' ? 450 : 200);
+  }
+  async function loadPeople() {
+    const q = document.getElementById('peopleSearch').value.trim();
+    const box = document.getElementById('peopleResults');
+    if (!q) { box.classList.add('hidden'); return; }
+    const r = await fetch("{{ url_for('social.api_people') }}?q=" + encodeURIComponent(q));
+    const d = await r.json();
+    box.innerHTML = d.map(u => '<a class="block px-3 py-2 text-sm hover:bg-slate-50" href="{{ url_for('social.chat') }}/' + u.id + '">'
+      + '<b>' + u.name + '</b> <span class="text-slate-400 text-xs">' + u.role + (u.sacco ? ' · ' + u.sacco : '') + '</span></a>').join('')
+      || '<div class="px-3 py-2 text-sm text-slate-400">No matches</div>';
+    box.classList.remove('hidden');
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const ps = document.getElementById('peopleSearch');
+    if (ps) { let t; ps.addEventListener('input', () => { clearTimeout(t); t = setTimeout(loadPeople, 220); }); }
+    pollNotifications();
+    setInterval(pollNotifications, 6000);
+    if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
+  });
+</script>
 {% else %}
   {% block public %}{% endblock %}
 {% endif %}
+{% block scripts %}{% endblock %}
 </body>
 </html>

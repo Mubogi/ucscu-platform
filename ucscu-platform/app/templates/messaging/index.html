@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Messaging — UCSCU Connect{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Bulk messaging</h1>
+<p class="text-sm text-gray-500 mb-5">Group member numbers into a queue and track coverage (sent / pending / failed)</p>
+
+<div class="grid lg:grid-cols-5 gap-4">
+  <div class="card lg:col-span-2">
+    <h2 class="font-bold mb-3">Compose broadcast</h2>
+    <form method="post" action="{{ url_for('messaging.send') }}" class="space-y-2">
+      <input class="input" name="title" placeholder="Subject / document title" required>
+      <textarea class="input" name="body" rows="3" placeholder="Message body"></textarea>
+      <div class="flex gap-2">
+        <select class="input" name="channel">
+          {% for c in channels %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+        <select class="input" name="scope_select" id="scope_select" onchange="toggleScope()">
+          <option value="All">All members</option>
+          <option value="Region">Region</option>
+          <option value="Custom">Custom pick</option>
+        </select>
+      </div>
+      <select class="input" name="region" id="region_sel">
+        {% for r in regions %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+      </select>
+      <div id="custom_box" class="hidden">
+        <input class="input" id="member_filter" placeholder="🔎 Filter members to pick..." oninput="filterMembers()">
+        <div id="member_list" class="mt-2 max-h-48 overflow-y-auto space-y-1 border rounded-lg p-2">
+          {% for m in members %}
+          <label class="member flex items-center gap-2 text-sm">
+            <input type="checkbox" name="member_id" value="{{ m.id }}">
+            <span class="flex-1">{{ m.name }}</span>
+            <span class="text-xs text-gray-400">{{ m.phone or '—' }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button class="btn btn-brand w-full">Queue broadcast</button>
+    </form>
+    <script>
+      function toggleScope() {
+        const v = document.getElementById('scope_select').value;
+        document.getElementById('region_sel').classList.toggle('hidden', v !== 'Region');
+        document.getElementById('custom_box').classList.toggle('hidden', v !== 'Custom');
+      }
+      function filterMembers() {
+        const q = document.getElementById('member_filter').value.toLowerCase();
+        document.querySelectorAll('#member_list .member').forEach(el => {
+          el.classList.toggle('hidden', !el.textContent.toLowerCase().includes(q));
+        });
+      }
+      toggleScope();
+    </script>
+  </div>
+
+  <div class="lg:col-span-3 space-y-4">
+    <div class="card overflow-x-auto">
+      <h2 class="font-bold mb-3">Broadcasts & coverage</h2>
+      <table class="tbl">
+        <thead><tr><th>Broadcast</th><th>Channel</th><th>Group</th><th>Coverage</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for b in broadcasts %}
+          <tr>
+            <td class="font-medium"><a href="{{ url_for('messaging.detail', bid=b.id) }}" class="hover:underline">{{ b.title }}</a>
+              <div class="text-xs text-gray-400">{{ b.created_by or '' }} · {{ (b.created_at or '') }}</div></td>
+            <td>{{ b.channel }}</td>
+            <td>{{ b.scope }}</td>
+            <td class="w-40">
+              <div class="h-2 bg-gray-200 rounded-full">
+                <div class="h-2 rounded-full {{ 'bg-green-500' if b.coverage == 100 else 'bg-yellow-400' }}" style="width:{{ b.coverage }}%"></div>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">{{ b.sent }}/{{ b.total }} sent ({{ b.coverage }}%)</div>
+            </td>
+            <td class="whitespace-nowrap">
+              <a href="{{ url_for('messaging.detail', bid=b.id) }}" class="btn btn-ghost text-xs px-2 py-1">Queue</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-gray-400">No broadcasts yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
